@@ -124,7 +124,7 @@ class Show_jl
     apf_file_names_clean = apf_file_names.map { |tfile| tfile[1] + '.apf' } || []
   end
 
-  # returniert ein Array bestehend aus [0] apf_file_names_clean und [1] apf_contents
+  # returns an array consisting of [0] apf_file_names_clean and [1] apf_contents
   def apf_arr_generator
     apf_file_names = find_apf
     apf = []
@@ -140,7 +140,19 @@ class Show_jl
     apf
   end
   
+  def all_apf_finder(arr = file_arr[1])
+    apf_file_names = find_apf(arr)
+    if apf_file_names.count > 0
+      p apf_arr_generator[1]
+      sub_apf_names = find_apf( apf_arr_generator[1] )
+      apf_file_names += sub_apf_names
+      apf_file_names = apf_file_names.uniq
+    end
+    p apf_file_names
+  end
+  
   def work_arr_generator
+    p all_apf_finder
     apf_arr = apf_arr_generator
     unless apf_arr.empty?
       [  file_arr[0] + apf_arr[0], file_arr[1] + apf_arr[1]  ]
