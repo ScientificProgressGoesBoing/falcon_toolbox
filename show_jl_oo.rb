@@ -109,9 +109,9 @@ class Show_jl
     [ [@file], [File.readlines( @path_and_file.to_s )]  ]
   end
   
-  def find_apf
+  def find_apf(arr = file_arr[1])
     match_apf = []
-    file_arr[1].each do |lines| 
+    arr.each do |lines| 
       lines.each do |l|
         match_apf << l.match(/^t([^ \#]+) /)
       end
