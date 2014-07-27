@@ -12,6 +12,8 @@
 #TODO: loop für unterverlinkte apf-files
 #todo: apf files verlinkt aus ... anzeigen
 
+#TODO: freie Sprungziele!! (damit nicht immer falcon run!)
+
 #TODO: Gesamtanzeige aller Jump Labels, Gesamtcount
 
 #TODO: unmatched labels
