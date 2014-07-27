@@ -120,7 +120,7 @@ class Show_jl
   end
 
   # returniert ein Array bestehend aus [0] apf_file_names_clean und [1] apf_contents
-  def apf_arr
+  def apf_arr_generator
     apf_file_names = find_apf
     apf = []
     if apf_file_names.count > 0 
@@ -138,6 +138,7 @@ class Show_jl
   end
   
   def work_arr_generator
+    apf_arr = apf_arr_generator
     unless apf_arr.empty?
       [  file_arr[0] + apf_arr[0], file_arr[1] + apf_arr[1]  ]
     else
@@ -177,7 +178,7 @@ class Show_jl
         end
       end
       if file_names.count > 1 && j > 0
-        puts 'Jump Labels in all files:'
+        puts 'Jump Labels in ALL files:'
         md_arr_all_files.uniq.sort.each do |jl_all_files|
           jl = jl_all_files[0]
           puts jl.sub!(/^[^+]\+/, '')
