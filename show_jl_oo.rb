@@ -12,10 +12,6 @@
 #TODO: loop für unterverlinkte apf-files
 #todo: apf files verlinkt aus ... anzeigen
 
-#TODO: freie Sprungziele!! (damit nicht immer falcon run!)
-
-#TODO: Gesamtanzeige aller Jump Labels, Gesamtcount
-
 #TODO: unmatched labels
 #TODO: Sprungziel unklar
 
@@ -105,6 +101,12 @@ class Show_jl
     find_jl
   end 
   
+  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
+  NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
+  SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
+  # JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
+  JL = ABC + NUM + SYMBOL
+  
   def file_arr
     [ [@file], [File.readlines( @path_and_file.to_s )]  ]
   end
@@ -186,13 +188,23 @@ class Show_jl
           md_arr_all_files += md_arr
         end
       end
+      # Gesamtanzeige aller jump labels, Gesamtcount
       if file_names.count > 1 && j > 0
-        puts 'Jump Labels in ALL files:'
+        puts 'Jump labels in ALL files:'
         md_arr_all_files.uniq.sort.each do |jl_all_files|
           jl = jl_all_files[0]
           puts jl.sub!(/^[^+]\+/, '')
         end
         puts 'Total: ' + md_arr_all_files.uniq.count.to_s
+      end
+      # Free jump labels
+      if md_arr_all_files.uniq.count > 0
+        free_jl = JL - md_arr_all_files.uniq.flatten
+        puts "\n" + 'FREE jump labels: ' 
+        free_jl.each do |jl|
+          print jl
+          print '  '
+        end
       end
     end
     j > 0 ? 1 : 0
