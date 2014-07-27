@@ -137,7 +137,7 @@ class Show_jl
     apf
   end
   
-  def work_arr
+  def work_arr_generator
     unless apf_arr.empty?
       [  file_arr[0] + apf_arr[0], file_arr[1] + apf_arr[1]  ]
     else
@@ -146,13 +146,14 @@ class Show_jl
   end
   
   def find_jl
-    file_names_and_contents_arr = work_arr
+    file_names_and_contents_arr = work_arr_generator
     file_names = file_names_and_contents_arr[0]
     if file_names.count > 0 
       contents = file_names_and_contents_arr[1]
-      md_arr = []
+      md_arr_all_files = []
       j = 0
       contents.each_with_index do |file_content, index|
+        md_arr = []
         file_content.each do |str|
           found = str.scan(/ \+[#]?[^\+ #-]+/).uniq
           md_arr << found unless found.empty?
@@ -166,16 +167,22 @@ class Show_jl
           md_arr.each do |m|
             jump_labels.push( m[0].gsub(/^ \+/,'') ) unless m[0] == nil
           end
-          i = jump_labels.uniq.count
           jump_labels.uniq.sort.each_with_index do |jl, index|
             puts jl
           end
-          #puts "Total in #{file_names[index]}: " + ( i + 1 ).to_s + "\n" + "\n"
-          puts "Total: " + i.to_s + "\n" + "\n"
-          j += i
-          i = 0
-          md_arr = []
+          #puts "Total in #{file_names[index]}: " + jump_labels.uniq.count.to_s + "\n" + "\n"
+          puts "Total: " + jump_labels.uniq.count.to_s + "\n" + "\n"
+          j += jump_labels.uniq.count
+          md_arr_all_files += md_arr
         end
+      end
+      if file_names.count > 1 && j > 0
+        puts 'Jump Labels in all files:'
+        md_arr_all_files.uniq.sort.each do |jl_all_files|
+          jl = jl_all_files[0]
+          puts jl.sub!(/^[^+]\+/, '')
+        end
+        puts 'Total: ' + md_arr_all_files.uniq.count.to_s
       end
     end
     j > 0 ? 1 : 0
