@@ -118,17 +118,26 @@ class Show_jl
     end
     apf_file_names = match_apf.reject { |l| l == nil  }
   end
+  
+  def apf_file_name_cleaner(apf_file_names)
+    if apf_file_names.count > 0
+      apf_file_names_clean = []
+      apf_file_names.each do |tfile|
+        apf_file_names_clean << tfile[1] + '.apf'
+      end 
+      apf_file_names_clean
+    end  
+  end
 
   # returniert ein Array bestehend aus [0] apf_file_names_clean und [1] apf_contents
   def apf_arr_generator
     apf_file_names = find_apf
+    apf_file_names_clean = apf_file_name_cleaner(apf_file_names)
     apf = []
     if apf_file_names.count > 0 
       apf_contents = []
-      apf_file_names_clean = []
-      apf_file_names.each do |tfile|
-        apf_file_names_clean << tfile[1] + '.apf'
-        apf_path_and_file = @path + '/' + tfile[1] + '.apf'
+      apf_file_names_clean.each do |apf_file_name|
+        apf_path_and_file = @path + '/' + apf_file_name
         apf_contents <<  File.readlines(apf_path_and_file) 
       end 
       apf << apf_file_names_clean
