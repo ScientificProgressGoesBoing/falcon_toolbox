@@ -101,6 +101,7 @@ class Show_jl
     find_jl
   end 
   
+  # constants
   ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
   NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
   SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
@@ -205,6 +206,7 @@ class Show_jl
           print jl
           print '  '
         end
+        puts "\n" + 'Total: ' + free_jl.count.to_s + "\n"
       end
     end
     j > 0 ? 1 : 0
