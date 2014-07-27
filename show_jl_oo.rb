@@ -143,12 +143,12 @@ class Show_jl
   def all_apf_finder(arr = file_arr[1])
     apf_file_names = find_apf(arr)
     if apf_file_names.count > 0
-      p apf_arr_generator[1]
-      sub_apf_names = find_apf( apf_arr_generator[1] )
+      apf_contents_arr = apf_arr_generator[1]
+      #p sub_apf_names = find_apf( apf_arr_generator[1] )
+      p sub_apf_names = find_apf( apf_contents_arr )
       apf_file_names += sub_apf_names
       apf_file_names = apf_file_names.uniq
     end
-    p apf_file_names
   end
   
   def work_arr_generator
