@@ -5,17 +5,16 @@
 #Requires ruby installation 1.9.3 or above
 #Execute with
 #ruby show_jl.rb
-
+#************************************************************************
 
 #TODO: findet die nach #+I noch nicht !!!
-
 #TODO: loop für unterverlinkte apf-files
 #todo: apf files verlinkt aus ... anzeigen
-
 #TODO: unmatched labels
 #TODO: Sprungziel unklar
-
 #TODO: Sprungziel liegt nicht innerhalb derselben Unterroutine
+
+require 'pry'
 
 class File_chooser
   
@@ -91,14 +90,27 @@ class File_chooser
 end
 
 
+class File_name_and_contents
+
+  attr_reader :path_and_file, :contents
+
+  def initialize(path_and_file)
+    @path_and_file = path_and_file
+    @contents = File.readlines(path_and_file)
+  end
+
+end
+
 
 class Show_jl
+
+  attr_reader :file_name_and_contents
   
   def initialize
-    @path_and_file = File_chooser.new.file_choice_reader
-    @path = @path_and_file.sub(/\/.+/, '')
-    @file = @path_and_file.sub(/.+\//, '')
-    find_jl
+    @file_name_and_contents = File_name_and_contents.new( File_chooser.new.file_choice_reader )
+    # @path = @path_and_file.sub(/\/.+/, '')
+    # @file = @path_and_file.sub(/.+\//, '')
+    # find_jl
   end 
   
   # constants
@@ -108,61 +120,68 @@ class Show_jl
   # JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
   JL = ABC + NUM + SYMBOL
   
-  def file_arr
-    [ [@file], [File.readlines( @path_and_file.to_s )]  ]
-  end
-  
   #returns apf file names
-  def find_apf(arr = file_arr[1])
+  #method used in all_apf_finder
+  def find_apf( path_and_file = self.file_name_and_contents.path_and_file)
     match_apf = []
-    arr.each do |lines| 
-      lines.each do |l|
-        match_apf << l.match(/^t([^ \#]+) /)
+    regexp = /^t([^ \#]+)( *$|  )/
+    File_name_and_contents.new( path_and_file ).contents.each do |line|
+      if line.match(regexp) != nil
+        if line.match(regexp)[1] != nil 
+          match_apf << ( self.file_name_and_contents.path_and_file.sub(/\/.+/, '') + '/' + line.match(regexp)[1].chomp + '.apf' ) 
+        end
       end
     end
-    apf_file_names = match_apf.reject { |l| l == nil  }
-    apf_file_names_clean = apf_file_names.map { |tfile| tfile[1] + '.apf' } || []
+    match_apf
   end
 
-  # returns an array consisting of [0] apf_file_names_clean and [1] apf_contents
-  def apf_arr_generator(apf_file_names = find_apf)
-    apf = []
-    if apf_file_names.count > 0 
-      apf_contents = []
-      apf_file_names.each do |apf_file_name|
-        apf_path_and_file = @path + '/' + apf_file_name
-        apf_contents <<  File.readlines(apf_path_and_file) 
-      end 
-      apf << apf_file_names
-      apf << apf_contents
-    end
-    apf
-  end
-  
-  def all_apf_finder(apf_file_names = file_arr[1])
-    if apf_file_names.count > 0
-      p sub_apf = find_apf( apf_arr_generator(apf_file_names[1])[1] )
-      abort
-      if sub_apf.count > 0
-        apf_file_names += find_apf( apf_arr_generator(apf_file_names[1]) )
-        all_apf_finder( sub_apf )
+  #recursive method that returns all apf file names
+  def all_apf_finder( path_and_file = self.file_name_and_contents.path_and_file, all_apf_arr = [] )
+    apf_files = find_apf( path_and_file )
+    if apf_files.count > 0
+      all_apf_arr << apf_files
+      apf_files.each do |apf_file|
+        if File.exists? apf_file
+          path_and_file = apf_file
+          all_apf_finder( path_and_file, all_apf_arr )
+        else
+          puts 'Warning: File is linked to but does not exist: ' + apf_file
+        end
       end
     end
-    apf_file_names
+    all_apf_arr
   end
   
-  def work_arr_generator
-    # p all_apf_finder #debugging
-    apf_arr = apf_arr_generator
-    unless apf_arr.empty?
-      [  file_arr[0] + apf_arr[0], file_arr[1] + apf_arr[1]  ]
-    else
-      file_arr
-    end   
+  def file_and_all_apf_names_and_contents_arr
+    arr = all_apf_finder
+    arr.unshift self.file_name_and_contents.path_and_file
+    arr = arr.flatten
+    file_and_all_apf_names_and_contents_arr = []
+    arr.each do |path_and_file|
+      if File.exists? path_and_file
+        file_and_all_apf_names_and_contents_arr << File_name_and_contents.new(  path_and_file  )
+      end
+    end
+    file_and_all_apf_names_and_contents_arr
   end
+  
+  # def work_arr_generator( file_name_and_contents )
+    # work_arr = []
+    # work_arr << file_name_and_contents
+    # apf_arr = apf_arr_generator
+    # unless apf_arr.empty?
+      # apr_arr.each do |apf_file|
+        # work_arr << File_name_and_contents.new( apf_file )
+      # end
+    # else
+      # file_arr
+    # end   
+  # end
+  
+  # work_arr_generator( self.file_name_and_contents )
   
   def find_jl
-    file_names_and_contents_arr = work_arr_generator
+    all_file_names_and_contents = 
     file_names = file_names_and_contents_arr[0]
     if file_names.count > 0 
       contents = file_names_and_contents_arr[1]
@@ -217,8 +236,8 @@ class Show_jl
     
 end #class end
 
-#main
-Show_jl.new
+# main
+# moved to main.rb
 
 
 
