@@ -4,17 +4,14 @@
 
 #Requires ruby installation 1.9.3 or above
 #Execute with
-#ruby show_jl.rb
+#ruby sjl.rb
 #************************************************************************
 
 #TODO: findet die nach #+I noch nicht !!!
-#TODO: loop für unterverlinkte apf-files
 #todo: apf files verlinkt aus ... anzeigen
-#TODO: unmatched labels
-#TODO: Sprungziel unklar
 #TODO: Sprungziel liegt nicht innerhalb derselben Unterroutine
+#      oder im selben Nachladevorgang!
 
-require 'pry'
 
 class File_chooser
   
@@ -223,22 +220,31 @@ class Show_jl
       no_target_warning = ''
       #output jl
       puts "\n~~~"
-      puts 'All files summarized:'
+      puts 'Summary (all files):'
       md_arr_all_files.uniq.sort.each do |jl_all_files|
         puts jl_all_files
         #check matching target exists
         possible_target_form = '#-' + jl_all_files
         unless target_arr_all_files[1].find { |e| /#{jl_all_files}/ =~ e } ||       #type field
                target_arr_all_files[0].find { |e| /#{possible_target_form}/ =~ e }  #type #-A
-        no_target_warning += 'Warning: No target exists for ' + jl_all_files + "\n"
+        no_target_warning += 'Warning: No target exists for +' + jl_all_files + "\n"
         end
       end
       puts 'Total: ' + md_arr_all_files.uniq.count.to_s     
       #not unique targets
       duplicates = target_arr_all_files[0].group_by{|e| e}.keep_if{|_, e| e.length > 1}
-      puts "\n" if duplicates.count > 0 || no_target_warning != ''                #for readability
+      puts "\n" if duplicates.count > 0 || no_target_warning != ''                  #for readability
       if duplicates.count > 0
-        puts 'Warning: Not unique target(s) ' + duplicates.keys.join('  ')
+        # puts 'Warning: Not unique target(s) ' + duplicates.keys.join('  ')
+        print 'Warning: Targets not unique ' 
+        duplicates.keys.each_with_index do |duplicate, index|
+          print duplicate + ' (' + duplicates[duplicate].count.to_s + ')'
+          if index < duplicates.count - 1
+            print ', ' 
+          else 
+            print "\n"
+          end
+        end
       end
       #unmatched jl
       puts no_target_warning if no_target_warning != ''
