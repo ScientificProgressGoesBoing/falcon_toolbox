@@ -254,13 +254,13 @@ class Show_jl
       end
       puts "\n" + 'Total free: ' + free_jl.count.to_s + "\n"
     end
-   
     j > 0 ? 1 : 0
   end
 end #class end
 
 # main
-# moved to main.rb
+a = Show_jl.new
+a.find_jl
 
 
 
