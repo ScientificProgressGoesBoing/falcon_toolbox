@@ -165,21 +165,6 @@ class Show_jl
     file_and_all_apf_names_and_contents_arr
   end
   
-  # def work_arr_generator( file_name_and_contents )
-    # work_arr = []
-    # work_arr << file_name_and_contents
-    # apf_arr = apf_arr_generator
-    # unless apf_arr.empty?
-      # apr_arr.each do |apf_file|
-        # work_arr << File_name_and_contents.new( apf_file )
-      # end
-    # else
-      # file_arr
-    # end   
-  # end
-  
-  # work_arr_generator( self.file_name_and_contents )
-  
   def find_jl
     all_file_names_and_contents = 
     file_names = file_names_and_contents_arr[0]
