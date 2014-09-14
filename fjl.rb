@@ -166,59 +166,71 @@ class Show_jl
   end
   
   def find_jl
-    all_file_names_and_contents = 
-    file_names = file_names_and_contents_arr[0]
-    if file_names.count > 0 
-      contents = file_names_and_contents_arr[1]
-      md_arr_all_files = []
-      j = 0
-      contents.each_with_index do |file_content, index|
-        md_arr = []
-        file_content.each do |str|
-          found = str.scan(/ \+[#]?[^\+ #-]+/).uniq
-          md_arr << found unless found.empty?
-        end          
-        if md_arr.empty?
-          puts 'No jump labels found in ' + file_names[index] + '.'
-          return 0
-        else 
-          puts 'Jump labels in file ' + file_names[index] + ':'
-          jump_labels = Array.new
-          md_arr.each do |m|
-            jump_labels.push( m[0].gsub(/^ \+/,'') ) unless m[0] == nil
-          end
-          jump_labels.uniq.sort.each_with_index do |jl, index|
-            puts jl
-          end
-          #puts "Total in #{file_names[index]}: " + jump_labels.uniq.count.to_s + "\n" + "\n"
-          puts "Total: " + jump_labels.uniq.count.to_s + "\n" + "\n"
-          j += jump_labels.uniq.count
-          md_arr_all_files += md_arr
-        end
+    scan_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
+    target_regex = /^(#-?[^+ #]+( |$))/
+    all_files_names_and_contents_arr = file_and_all_apf_names_and_contents_arr
+    md_arr_all_files = []
+    target_arr_all_files = []
+    j = 0   #count all jump labels (including duplicates)
+    puts '' #for better readability
+    #scan all files
+    all_files_names_and_contents_arr.each do |object|
+      md_arr = []
+      target_arr = []
+      #scan for jump labels
+      object.contents.each do |line|
+         found = line.scan( scan_regex ).uniq.flatten
+         md_arr << found[1] unless found.empty?
+         #jump targets
+         target = line.scan( target_regex ).uniq.flatten
+         p target
+         target_arr_all_files << target[1] unless target.empty?
       end
-      # Gesamtanzeige aller jump labels, Gesamtcount
-      if file_names.count > 1 && j > 0
-        puts 'Jump labels in ALL files:'
-        md_arr_all_files.uniq.sort.each do |jl_all_files|
-          jl = jl_all_files[0]
-          puts jl.sub!(/^[^+]\+/, '')
+      #output to commandline
+      if md_arr.empty?
+        puts 'No jump labels found in ' + object.path_and_file + '.'
+      else       
+        md_arr = md_arr.map {|element| element.chomp}
+        md_arr.delete('#')
+        #output
+        puts 'Jump labels in file ' + object.path_and_file + ':'
+        md_arr.uniq.sort.each do |jl|
+          puts jl
         end
-        puts 'Total: ' + md_arr_all_files.uniq.count.to_s
-      end
-      # Free jump labels
-      if md_arr_all_files.uniq.count > 0
-        free_jl = JL - md_arr_all_files.uniq.flatten
-        puts "\n" + 'FREE jump labels: ' 
-        free_jl.each do |jl|
-          print jl
-          print '  '
-        end
-        puts "\n" + 'Total: ' + free_jl.count.to_s + "\n"
+        puts "Total: " + md_arr.uniq.count.to_s + "\n" + "\n"
+        j += md_arr.uniq.count
+        md_arr_all_files += md_arr
       end
     end
+    # Gesamtanzeige aller jump labels, Gesamtcount
+    if j > 0
+      puts "\n~~~"
+      puts 'All files summarized:'
+      md_arr_all_files.uniq.sort.each do |jl_all_files|
+        puts jl_all_files
+      end
+      puts 'Total: ' + md_arr_all_files.uniq.count.to_s     
+      #unmatched jump labels
+    
+      #nicht eindeutige jl
+
+      end
+
+    
+    #free jump labels
+    if j > 0
+      free_jl = JL - md_arr_all_files.uniq
+      puts "\n~~~"
+      puts "\n" + 'FREE jump labels: ' 
+      free_jl.each do |jl|
+        print jl
+        print '  '
+      end
+      puts "\n" + 'Total free: ' + free_jl.count.to_s + "\n"
+    end
+   
     j > 0 ? 1 : 0
   end
-    
 end #class end
 
 # main

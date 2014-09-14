@@ -1,10 +1,11 @@
 load 'fjl.rb'
 
 a = Show_jl.new
+a.find_jl
 # p a.find_apf
 # p a.all_apf_finder
 # p a.file_and_all_apf_names_and_contents_arr[0]
-a.file_and_all_apf_names_and_contents_arr.each {|f| p f.path_and_file}
+# a.file_and_all_apf_names_and_contents_arr.each {|f| p f.path_and_file}
 # p a.find_apf( 'param/convert_oss_CNP.apf' )
 
 
