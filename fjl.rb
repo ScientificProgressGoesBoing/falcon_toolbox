@@ -167,24 +167,37 @@ class Show_jl
   
   def find_jl
     scan_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
-    target_regex = /^(#-?[^+ #]+( |$))/
+    target_regex = /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/
     all_files_names_and_contents_arr = file_and_all_apf_names_and_contents_arr
     md_arr_all_files = []
     target_arr_all_files = []
+    target_arr_all_files << []
+    target_arr_all_files << []
     j = 0   #count all jump labels (including duplicates)
     puts '' #for better readability
     #scan all files
     all_files_names_and_contents_arr.each do |object|
       md_arr = []
       target_arr = []
-      #scan for jump labels
+      target_arr << []
+      target_arr << []      
+      #scan jump labels
       object.contents.each do |line|
          found = line.scan( scan_regex ).uniq.flatten
          md_arr << found[1] unless found.empty?
-         #jump targets
+         #scan targets
          target = line.scan( target_regex ).uniq.flatten
-         p target
-         target_arr_all_files << target[1] unless target.empty?
+         #target type #-A
+         target_arr[0] << target[0] unless ( target.empty? || target[0] == nil )
+         #target type field
+         target_arr[1] << target[2] unless ( target.empty? || target[2] == nil )
+      end
+      #targets
+      unless target_arr[0].empty?
+        target_arr_all_files[0] << target_arr[0]
+      end
+      unless target_arr[1].empty?
+        target_arr_all_files[1] << target_arr[1]
       end
       #output to commandline
       if md_arr.empty?
@@ -200,23 +213,36 @@ class Show_jl
         puts "Total: " + md_arr.uniq.count.to_s + "\n" + "\n"
         j += md_arr.uniq.count
         md_arr_all_files += md_arr
-      end
+      end      
     end
-    # Gesamtanzeige aller jump labels, Gesamtcount
+    #Gesamtanzeige aller jump labels, Gesamtcount
     if j > 0
+      #targets
+      target_arr_all_files[0] = target_arr_all_files[0].flatten.map {|element| element.chomp}
+      target_arr_all_files[1] = target_arr_all_files[1].flatten.map {|element| element.chomp}
+      no_target_warning = ''
+      #output jl
       puts "\n~~~"
       puts 'All files summarized:'
       md_arr_all_files.uniq.sort.each do |jl_all_files|
         puts jl_all_files
+        #check matching target exists
+        possible_target_form = '#-' + jl_all_files
+        unless target_arr_all_files[1].find { |e| /#{jl_all_files}/ =~ e } ||       #type field
+               target_arr_all_files[0].find { |e| /#{possible_target_form}/ =~ e }  #type #-A
+        no_target_warning += 'Warning: No target exists for ' + jl_all_files + "\n"
+        end
       end
       puts 'Total: ' + md_arr_all_files.uniq.count.to_s     
-      #unmatched jump labels
-    
-      #nicht eindeutige jl
-
+      #not unique targets
+      duplicates = target_arr_all_files[0].group_by{|e| e}.keep_if{|_, e| e.length > 1}
+      puts "\n" if duplicates.count > 0 || no_target_warning != ''                #for readability
+      if duplicates.count > 0
+        puts 'Warning: Not unique target(s) ' + duplicates.keys.join('  ')
       end
-
-    
+      #unmatched jl
+      puts no_target_warning if no_target_warning != ''
+    end
     #free jump labels
     if j > 0
       free_jl = JL - md_arr_all_files.uniq
