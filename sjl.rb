@@ -1,5 +1,5 @@
 #This ruby script shows a list of all falcon FEL jump labels already used
-#Adjust path 'param' as needed
+#Adjust path 'param' as needed 
 #To be used with .fcv, .ipa, and .tmpl files
 
 #Requires ruby installation 1.9.3 or above
@@ -7,7 +7,6 @@
 #ruby sjl.rb
 #************************************************************************
 
-#TODO: findet die nach #+I noch nicht !!!
 #todo: apf files verlinkt aus ... anzeigen
 #TODO: Sprungziel liegt nicht innerhalb derselben Unterroutine
 #      oder im selben Nachladevorgang!
