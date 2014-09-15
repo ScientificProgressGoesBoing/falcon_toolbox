@@ -4,9 +4,10 @@
 
 #Requires ruby installation 1.9.3 or above
 #Execute with
-#ruby sjl.rb
+#ruby swr.rb
 #************************************************************************
 
+#subroutines liegen nur in der Hauptdatei
 #todo: apf files verlinkt aus ... anzeigen
 #TODO: Sprungziel liegt nicht innerhalb derselben Unterroutine
 #      oder im selben Nachladevorgang!
@@ -98,7 +99,7 @@ class File_name_and_contents
 end
 
 
-class Show_jl
+class Show_sr
 
   attr_reader :file_name_and_contents
   
@@ -106,15 +107,10 @@ class Show_jl
     @file_name_and_contents = File_name_and_contents.new( File_chooser.new.file_choice_reader )
     # @path = @path_and_file.sub(/\/.+/, '')
     # @file = @path_and_file.sub(/.+\//, '')
-    # find_jl
   end 
   
   # constants
-  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
-  NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
-  SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
-  # JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
-  JL = ABC + NUM + SYMBOL
+  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ]
   
   #returns apf file names
   #method used in all_apf_finder
@@ -161,113 +157,55 @@ class Show_jl
     file_and_all_apf_names_and_contents_arr
   end
   
-  def find_jl
-    scan_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
-    target_regex = /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/
-    all_files_names_and_contents_arr = file_and_all_apf_names_and_contents_arr
-    md_arr_all_files = []
-    target_arr_all_files = []
-    target_arr_all_files << []
-    target_arr_all_files << []
-    j = 0   #count all jump labels (including duplicates)
-    puts '' #for better readability
-    #scan all files
-    all_files_names_and_contents_arr.each do |object|
-      md_arr = []
-      target_arr = []
-      target_arr << []
-      target_arr << []      
-      #scan jump labels
-      object.contents.each do |line|
-         found = line.scan( scan_regex ).uniq.flatten
-         md_arr << found[1] unless found.empty?
-         #scan targets
-         target = line.scan( target_regex ).uniq.flatten
-         #target type #-A
-         target_arr[0] << target[0] unless ( target.empty? || target[0] == nil )
-         #target type field
-         target_arr[1] << target[2] unless ( target.empty? || target[2] == nil )
-      end
-      #targets
-      unless target_arr[0].empty?
-        target_arr_all_files[0] << target_arr[0]
-      end
-      unless target_arr[1].empty?
-        target_arr_all_files[1] << target_arr[1]
-      end
-      #output to commandline
-      if md_arr.empty?
-        puts 'No jump labels found in ' + object.path_and_file + '.'
-      else       
-        md_arr = md_arr.map {|element| element.chomp}
-        md_arr.delete('#')
-        #output
-        puts 'Jump labels in file ' + object.path_and_file + ':'
-        md_arr.uniq.sort.each do |jl|
-          puts jl
-        end
-        puts "Total: " + md_arr.uniq.count.to_s + "\n" + "\n"
-        j += md_arr.uniq.count
-        md_arr_all_files += md_arr
-      end      
+  def find_sr
+    sr_jump_in_regex     = /[^ ]+ >([a-z]{1})(  | $|$)/
+    sr_start_regex       = /^#\(([a-z]{1})(  | $|$)/
+    sr_end_regex         = /^#\)([a-z]{1})(  | $|$)/
+    conversion_end_regex = /^#\+#(  | $|$)/
+    sr_jump_in_arr = []
+    sr_start_found_arr = []
+    sr_end_found_arr = []
+    conversion_end_line = 0
+    warnings = ''
+    #scan
+    self.file_name_and_contents.contents.each_with_index do |line, index|    
+      conversion_end_found = line.scan( conversion_end_regex ).uniq.flatten
+      conversion_end_line = index + 1 unless conversion_end_found.empty?
     end
-    #Gesamtanzeige aller jump labels, Gesamtcount
-    if j > 0
-      #targets
-      target_arr_all_files[0] = target_arr_all_files[0].flatten.map {|element| element.chomp}
-      target_arr_all_files[1] = target_arr_all_files[1].flatten.map {|element| element.chomp}
-      no_target_warning = ''
-      #output jl
-      puts "\n~~~"
-      puts 'Summary (all files):'
-      md_arr_all_files.uniq.sort.each do |jl_all_files|
-        puts jl_all_files
-        #check matching target exists
-        possible_target_form = '#-' + jl_all_files
-        unless target_arr_all_files[1].find { |e| /#{jl_all_files}/ =~ e } ||       #type field
-               target_arr_all_files[0].find { |e| /#{possible_target_form}/ =~ e }  #type #-A
-        no_target_warning += 'Warning: No target exists for +' + jl_all_files + "\n"
+    self.file_name_and_contents.contents.each_with_index do |line, index|      
+      sr_jump_in = line.scan( sr_jump_in_regex ).flatten
+      sr_jump_in_arr << sr_jump_in[0] unless sr_jump_in.empty?
+      sr_start_found = line.scan( sr_start_regex ).flatten
+      if not sr_start_found.empty? 
+        if not index > conversion_end_line 
+          warnings += 'Warning: Subroutine ' + sr_start_found[0].to_s + ' starts before end of conversion.' + "\n"
         end
       end
-      puts 'Total: ' + md_arr_all_files.uniq.count.to_s     
-      #not unique targets
-      duplicates = target_arr_all_files[0].group_by{|e| e}.keep_if{|_, e| e.length > 1}
-      puts "\n" if duplicates.count > 0 || no_target_warning != ''                  #for readability
-      if duplicates.count > 0
-        # puts 'Warning: Not unique target(s) ' + duplicates.keys.join('  ')
-        print 'Warning: Targets not unique ' 
-        duplicates.keys.each_with_index do |duplicate, index|
-          print duplicate + ' (' + duplicates[duplicate].count.to_s + ')'
-          if index < duplicates.count - 1
-            print ', ' 
-          else 
-            print "\n"
-          end
-        end
-      end
-      #unmatched jl
-      puts no_target_warning if no_target_warning != ''
+      sr_start_found_arr << sr_start_found[0] unless sr_start_found.empty?
+      sr_end_found = line.scan( sr_end_regex ).flatten
+      sr_end_found_arr << sr_end_found[0] unless sr_end_found.empty?      
     end
-    #free jump labels
-    if j > 0
-      free_jl = JL - md_arr_all_files.uniq
-      puts "\n~~~"
-      puts "\n" + 'FREE jump labels: ' 
-      free_jl.each do |jl|
-        print jl
-        print '  '
+    #check
+    subroutines = []
+    sr_start_found_arr.each do |subroutine_start|
+      unless sr_end_found_arr.include? subroutine_start
+        warnings += 'Warning: Subroutine ' + subroutine_start + ' is not closed.' + "\n"
+      else        
+        subroutines << subroutine_start
       end
-      puts "\n" + 'Total free: ' + free_jl.count.to_s + "\n"
+      warnings += 'Subroutine ' + subroutine_start + ' is not used.' + "\n" unless sr_jump_in_arr.include? subroutine_start
     end
-    j > 0 ? 1 : 0
-  end
+    sr_jump_in_arr.each do |jump_in|
+      warnings += 'Warning: No subroutine ' + jump_in + ' even though attempt to jump into >' + jump_in + ".\n" unless sr_start_found_arr.include? jump_in
+    end
+    #output    
+    puts 'Subroutines: '
+    puts subroutines.sort.join(', ')
+    puts warnings 
+  end   
+      
 end #class end
 
 # main
-a = Show_jl.new
-a.find_jl
-
-
-
-
-
+a = Show_sr.new
+a.find_sr
