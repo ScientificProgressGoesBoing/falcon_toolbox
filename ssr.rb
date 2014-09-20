@@ -158,51 +158,99 @@ class Show_sr
   end
   
   def find_sr
-    sr_jump_in_regex     = /[^ ]+ >([a-z]{1})(  | $|$)/
+    sr_jump_in_regex     = /[^ ]{1} >([a-z]{1})(  | $|$)/
     sr_start_regex       = /^#\(([a-z]{1})(  | $|$)/
     sr_end_regex         = /^#\)([a-z]{1})(  | $|$)/
     conversion_end_regex = /^#\+#(  | $|$)/
-    sr_jump_in_arr = []
-    sr_start_found_arr = []
-    sr_end_found_arr = []
+    sr_jump_in_hash = {}
+    sr_start_found_hash = {}
+    sr_end_found_hash = {}
     conversion_end_line = 0
-    warnings = ''
-    #scan
+    warnings = []
+    #scan for end of conversion
     self.file_name_and_contents.contents.each_with_index do |line, index|    
       conversion_end_found = line.scan( conversion_end_regex ).uniq.flatten
       conversion_end_line = index + 1 unless conversion_end_found.empty?
     end
-    self.file_name_and_contents.contents.each_with_index do |line, index|      
-      sr_jump_in = line.scan( sr_jump_in_regex ).flatten
-      sr_jump_in_arr << sr_jump_in[0] unless sr_jump_in.empty?
-      sr_start_found = line.scan( sr_start_regex ).flatten
-      if not sr_start_found.empty? 
-        if not index > conversion_end_line 
-          warnings += 'Warning: Subroutine ' + sr_start_found[0].to_s + ' starts before end of conversion.' + "\n"
+    #scan for sr
+    file_and_all_apf_names_and_contents_arr.each_with_index do |object, ix|  
+      file = object.path_and_file
+      object.contents.each_with_index do |line, index|
+       
+        sr_jump_in = line.scan( sr_jump_in_regex ).flatten
+        unless sr_jump_in.empty?
+          if sr_jump_in_hash[file]
+            sr_jump_in_hash[file].push sr_jump_in[0] 
+          else
+          sr_jump_in_hash[file] = [ sr_jump_in[0] ]
+          end
         end
-      end
-      sr_start_found_arr << sr_start_found[0] unless sr_start_found.empty?
-      sr_end_found = line.scan( sr_end_regex ).flatten
-      sr_end_found_arr << sr_end_found[0] unless sr_end_found.empty?      
-    end
+       
+        sr_start_found = line.scan( sr_start_regex ).flatten
+        unless sr_start_found.empty?
+          if file.end_with?( '.tmpl', '.fcv', '.ipa' )  && ( index < conversion_end_line )
+            warnings << 'Warning: Definition of subroutine ' + sr_start_found[0].to_s + ' starts before the end of conversion #+#.'
+          end
+          if file.end_with?('.apf')
+            warnings << 'Warning: Subroutine defined in "' + file + '" instead of main file.'
+          else
+            if sr_start_found_hash[file]
+              sr_start_found_hash[file].push sr_start_found[0]
+            else
+              sr_start_found_hash[file] = [ sr_start_found[0] ]
+            end
+          end
+        end
+        
+        sr_end_found = line.scan( sr_end_regex ).flatten
+        unless sr_end_found.empty? 
+          if sr_end_found_hash[file]
+            sr_end_found_hash[file].push sr_end_found[0]
+          else
+            sr_end_found_hash[file] = [ sr_end_found[0] ]
+          end
+        end
+        
+      end #end object.contents.each_with_index do |line, index|
+    end #end file_and_all_apf_names_and_contents_arr.each_with_index do |object, ix|  
+    
+    p sr_jump_in_hash
+    p sr_start_found_hash
+    p sr_end_found_hash
+   
     #check
     subroutines = []
-    sr_start_found_arr.each do |subroutine_start|
-      unless sr_end_found_arr.include? subroutine_start
-        warnings += 'Warning: Subroutine ' + subroutine_start + ' is not closed.' + "\n"
-      else        
-        subroutines << subroutine_start
+    sr_start_found_hash.each do |file, arr|
+      arr.each do |element|
+        unless sr_end_found_hash.values.flatten.include? element
+          warnings << 'Warning: Subroutine ' + element + ' is not closed.'
+        else
+          subroutines << element
+        end
+        unless sr_jump_in_hash.values.flatten.include? element
+          warnings << 'Subroutine ' + element + ' is not used.'
+        end
+      end 
+    end
+    
+    sr_jump_in_hash.each do |file, arr|
+      arr.each do |element|
+       unless sr_start_found_hash.values.flatten.include? element
+          warnings << 'Warning: No subroutine ' + element + ' despite >' + element + ' in "' + file +'".'
+        end
       end
-      warnings += 'Subroutine ' + subroutine_start + ' is not used.' + "\n" unless sr_jump_in_arr.include? subroutine_start
     end
-    sr_jump_in_arr.each do |jump_in|
-      warnings += 'Warning: No subroutine ' + jump_in + ' even though attempt to jump into >' + jump_in + ".\n" unless sr_start_found_arr.include? jump_in
+  
+    #output
+    puts '' #for readability
+    sr_start_found_hash.each do |file, arr|
+      puts 'Subroutines implemented in file "' + file + '":'
+      puts arr.sort.join(', ')
     end
-    #output    
-    puts 'Subroutines: '
-    puts subroutines.sort.join(', ')
-    puts warnings 
-  end   
+    puts '' #for readability
+    puts warnings.uniq.sort.join("\n")    
+    
+  end #method end
       
 end #class end
 
