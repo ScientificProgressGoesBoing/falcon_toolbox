@@ -4,7 +4,12 @@
 
 #Requires ruby installation 1.9.3 or above
 #Execute with
-#ruby show_var.rb
+#ruby falcon.rb
+
+#Available options
+#-var   list variables
+#-sr    list subroutines
+#-jl    list jump labels
 
 path = 'param'
 
