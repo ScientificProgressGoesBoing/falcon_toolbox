@@ -8,6 +8,9 @@
 
 path = 'param'
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#TODO: count "=" as deleting a variable
+
 
 class File_chooser
   
@@ -446,19 +449,83 @@ end
   end
 end #class end
 
+class Help
+
+  def initialize
+    self.list_options
+  end
+  
+  def list_options
+    puts 'Available options: '
+    puts '-var' + "\t" + 'to list Variables'
+    puts '-sr' + "\t" + 'to list Subroutines'
+    puts '-jl' + "\t" + 'to list Jump Lables'
+    puts ''
+    puts 'Example: ruby falcon.rb -jl'
+    puts '(combination of options is possible)'    
+  end
+  
+end
+
+
+class Validity_checker
+
+  attr_reader :invalid_arguments
+  
+  def initialize
+    @invalid_arguments = self.check_validity
+  end
+
+  def check_validity
+    invalid_arguments = []
+    valid_arguments = []
+    ARGV.each do |argument|
+      unless ['-var', '-sr', '-jl'].include? argument                           #register new options HERE!!!
+        invalid_arguments << argument
+      else
+        valid_arguments << argument
+      end
+    end
+    invalid_arguments
+  end
+  
+  def generate_warning
+    if self.invalid_arguments.count > 0 
+      warning = if invalid_arguments.count > 1
+                ' aren\'t valid options'
+                elsif invalid_arguments.count == 1
+                ' is not a valid option'
+                end  
+       puts invalid_arguments.join(' and ') + warning
+     end
+     Help.new
+  end
+  
+end 
+
+
 # main
+if ARGV.count > 0
+  Validity_checker.new.generate_warning
+else
+  puts 'What do you want to do?'
+  Help.new
+end
+
+# if ARGV.count > 1
+  # #puts separator
+# end
+
 if ARGV.include?( '-var' )
-Show_var.new.find_var
+  Show_var.new.find_var
 end
 
 if ARGV.include?( '-sr' )
-Show_sr.new.find_sr
+  Show_sr.new.find_sr
 end
 
 if ARGV.include?( '-jl' )
-Show_jl.new.find_jl
+  Show_jl.new.find_jl
 end
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#TODO: count "=" as deleting a variable
