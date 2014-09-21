@@ -1,12 +1,16 @@
-#This ruby script shows a deduplicated list of all falcon FEL variables currently in use
+#This ruby script shows a list of falcon FEL subroutines in use
 #Adjust path 'param' as needed
-#To be used with .fcv, .ipa and .tmpl files
+#To be used with .fcv, .ipa, and .tmpl files
 
 #Requires ruby installation 1.9.3 or above
 #Execute with
-#ruby show_var.rb
+#ruby swr.rb
+#************************************************************************
 
-path = 'param'
+#subroutines liegen nur in der Hauptdatei
+#todo: apf files verlinkt aus ... anzeigen
+#TODO: Sprungziel liegt nicht innerhalb derselben Unterroutine
+#      oder im selben Nachladevorgang!
 
 
 class File_chooser
@@ -94,8 +98,6 @@ class File_name_and_contents
 
 end
 
-
-
 class Search_arr
 
   attr_reader :file_name_and_contents
@@ -150,9 +152,9 @@ class Search_arr
   end
   
 end #class
-  
-  
-class Show_var
+ 
+
+class Show_sr
 
   attr_reader :search_arr
   
@@ -160,80 +162,98 @@ class Show_var
     @search_arr = Search_arr.new.file_and_all_apf_names_and_contents_arr
   end 
   
-  def delete_comments( line )
-    line = line.gsub(/\/\/.*$|  .*$/, '')
-  end
-  
-  def search_for_variables
-    variable_regex = / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/
-    var_found_hash = {}
-    
-    self.search_arr.each do |object|  
-    file = object.path_and_file
-      object.contents.each do |line|
-        line = delete_comments( line )
-        var_found = line.scan( variable_regex ).flatten
-        unless var_found.empty?
-          if var_found_hash[file]
-            var_found_hash[file].push var_found[0] 
+  def find_sr
+    sr_jump_in_regex     = /[^ ]{1} >([a-z]{1})(  | $|$)/
+    sr_start_regex       = /^#\(([a-z]{1})(  | $|$)/
+    sr_end_regex         = /^#\)([a-z]{1})(  | $|$)/
+    conversion_end_regex = /^#\+#(  | $|$)/
+    sr_jump_in_hash = {}
+    sr_start_found_hash = {}
+    sr_end_found_hash = {}
+    conversion_end_line = 0
+    warnings = []
+    #scan for end of conversion
+    self.search_arr[0].contents.each_with_index do |line, index|    
+      conversion_end_found = line.scan( conversion_end_regex ).uniq.flatten
+      conversion_end_line = index + 1 unless conversion_end_found.empty?
+    end
+    #scan for subroutines
+    self.search_arr.each_with_index do |object, ix|  
+      file = object.path_and_file
+      object.contents.each_with_index do |line, index|
+       
+        sr_jump_in = line.scan( sr_jump_in_regex ).flatten
+        unless sr_jump_in.empty?
+          if sr_jump_in_hash[file]
+            sr_jump_in_hash[file].push sr_jump_in[0] 
           else
-            var_found_hash[file] = [ var_found[0] ]
+          sr_jump_in_hash[file] = [ sr_jump_in[0] ]
           end
         end
-      end
+       
+        sr_start_found = line.scan( sr_start_regex ).flatten
+        unless sr_start_found.empty?
+          if file.end_with?( '.tmpl', '.fcv', '.ipa' )  && ( index < conversion_end_line )
+            warnings << 'Warning: Definition of subroutine ' + sr_start_found[0].to_s + ' starts before the end of conversion #+#.'
+          end
+          if file.end_with?('.apf')
+            warnings << 'Warning: Subroutine defined in "' + file + '" instead of main file.'
+          else
+            if sr_start_found_hash[file]
+              sr_start_found_hash[file].push sr_start_found[0]
+            else
+              sr_start_found_hash[file] = [ sr_start_found[0] ]
+            end
+          end
+        end
+        
+        sr_end_found = line.scan( sr_end_regex ).flatten
+        unless sr_end_found.empty? 
+          if sr_end_found_hash[file]
+            sr_end_found_hash[file].push sr_end_found[0]
+          else
+            sr_end_found_hash[file] = [ sr_end_found[0] ]
+          end
+        end
+        
+      end #end object.contents.each_with_index do |line, index|
+    end #end file_and_all_apf_names_and_contents_arr.each_with_index do |object, ix|  
+   
+    #check
+    subroutines = []
+    sr_start_found_hash.each do |file, arr|
+      arr.each do |element|
+        unless sr_end_found_hash.values.flatten.include? element
+          warnings << 'Warning: Subroutine ' + element + ' is not closed.'
+        else
+          subroutines << element
+        end
+        unless sr_jump_in_hash.values.flatten.include? element
+          warnings << 'Subroutine ' + element + ' is not used.'
+        end
+      end 
     end
-    var_found_hash
-  end          
-  
-  def is_deleted? ( variable )
-    del_regex = / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/
-    self.search_arr.each do |object|
-      object.contents.each do |line|
-        del_found = line.scan( del_regex ).flatten[0]
-        if del_found != nil
-          return true
+    
+    sr_jump_in_hash.each do |file, arr|
+      arr.each do |element|
+       unless sr_start_found_hash.values.flatten.include? element
+          warnings << 'Warning: No subroutine ' + element + ' despite >' + element + ' in "' + file +'".'
         end
       end
     end
-    return false
-  end
   
-  def find_var
-    var_found_hash = self.search_for_variables
-    total_variable_count = var_found_hash.values.flatten.uniq.count
-    
-    if var_found_hash.count > 1
-      puts '' #for readability
-      puts 'Summary (all files): '
-      var_found_hash.values.flatten.uniq.sort.each do |variable|
-        puts variable
-      end
-      puts 'Total: ' + total_variable_count.to_s + "\t" + '(in ' + var_found_hash.values.flatten.count.to_s + ' individual occurences)'
-    end  
-    #output      
+    #output
     puts '' #for readability
-    var_found_hash.each do |file, arr|
-      puts 'Variables in file "' + file + '":'
-      puts arr.uniq.sort.join(', ')
-      puts 'Total: ' + arr.uniq.count.to_s + "\t" + '(in ' + arr.count.to_s + ' individual occurences)'
-      puts '' #for readability      
-    end    
-    #check if deleted
-    var_found_hash.values.flatten.uniq.sort.each do |variable|
-      deleted = self.is_deleted?( variable )
-      unless deleted
-        puts 'Warning: Variable ' + variable + ' is never deleted.' 
-      end
+    sr_start_found_hash.each do |file, arr|
+      puts 'Subroutines implemented in file "' + file + '":'
+      puts arr.sort.join(', ')
     end
-    #free variables
-    puts 'Remaining free variables: ' + ( 936 - total_variable_count ).to_s
-  end #end method
-    
+    puts '' #for readability
+    puts warnings.uniq.sort.join("\n")       
+  end #method end
+      
 end #class end
 
 # main
-Show_var.new.find_var
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#TODO: count "=" as deleting a variable
+a = Show_sr.new
+a.find_sr
