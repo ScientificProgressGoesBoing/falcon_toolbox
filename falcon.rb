@@ -1,16 +1,12 @@
-#This ruby script shows a list of falcon FEL subroutines in use
+#This ruby script shows a deduplicated list of all falcon FEL variables currently in use
 #Adjust path 'param' as needed
-#To be used with .fcv, .ipa, and .tmpl files
+#To be used with .fcv, .ipa and .tmpl files
 
 #Requires ruby installation 1.9.3 or above
 #Execute with
-#ruby swr.rb
-#************************************************************************
+#ruby show_var.rb
 
-#subroutines liegen nur in der Hauptdatei
-#todo: apf files verlinkt aus ... anzeigen
-#TODO: Sprungziel liegt nicht innerhalb derselben Unterroutine
-#      oder im selben Nachladevorgang!
+path = 'param'
 
 
 class File_chooser
@@ -98,6 +94,8 @@ class File_name_and_contents
 
 end
 
+
+
 class Search_arr
 
   attr_reader :file_name_and_contents
@@ -152,7 +150,85 @@ class Search_arr
   end
   
 end #class
- 
+  
+  
+class Show_var
+
+  attr_reader :search_arr
+  
+  def initialize
+    @search_arr = Search_arr.new.file_and_all_apf_names_and_contents_arr
+  end 
+  
+  def delete_comments( line )
+    line = line.gsub(/\/\/.*$|  .*$/, '')
+  end
+  
+  def search_for_variables
+    variable_regex = / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/
+    var_found_hash = {}   
+    self.search_arr.each do |object|  
+    file = object.path_and_file
+      object.contents.each do |line|
+        line = delete_comments( line )
+        var_found = line.scan( variable_regex ).flatten
+        unless var_found.empty?
+          if var_found_hash[file]
+            var_found_hash[file].push var_found[0] 
+          else
+            var_found_hash[file] = [ var_found[0] ]
+          end
+        end
+      end
+    end
+    var_found_hash
+  end          
+  
+  def is_deleted? ( variable )
+    del_regex = / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/
+    self.search_arr.each do |object|
+      object.contents.each do |line|
+        del_found = delete_comments( line ).scan( del_regex ).flatten[0]
+        if del_found != nil
+          return true
+        end
+      end
+    end
+    return false
+  end
+  
+  def find_var
+    var_found_hash = self.search_for_variables
+    total_variable_count = var_found_hash.values.flatten.uniq.count  
+    if var_found_hash.count > 1
+      puts '' #for readability
+      puts 'Summary (all files): '
+      var_found_hash.values.flatten.uniq.sort.each do |variable|
+        puts variable
+      end
+      puts 'Total: ' + total_variable_count.to_s + "\t" + '(in ' + var_found_hash.values.flatten.count.to_s + ' individual occurences)'
+    end  
+    #output      
+    puts '' #for readability
+    var_found_hash.each do |file, arr|
+      puts 'Variables in file "' + file + '":'
+      puts arr.uniq.sort.join(', ')
+      puts 'Total: ' + arr.uniq.count.to_s + "\t" + '(in ' + arr.count.to_s + ' individual occurences)'
+      puts '' #for readability      
+    end    
+    #check if deleted
+    var_found_hash.values.flatten.uniq.sort.each do |variable|
+      deleted = self.is_deleted?( variable )
+      unless deleted
+        puts 'Warning: Variable ' + variable + ' is never deleted.' 
+      end
+    end
+    #free variables
+    puts 'Remaining free variables: ' + ( 936 - total_variable_count ).to_s
+  end 
+    
+end #class end
+
 
 class Show_sr
 
@@ -253,5 +329,136 @@ class Show_sr
       
 end #class end
 
+
+class Show_jl
+
+attr_reader :search_arr
+  
+def initialize
+  @search_arr = Search_arr.new.file_and_all_apf_names_and_contents_arr
+end
+  
+  # constants
+  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
+  NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
+  SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
+  # JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
+  JL = ABC + NUM + SYMBOL
+  
+  def find_jl
+    scan_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
+    target_regex = /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/
+    md_arr_all_files = []
+    target_arr_all_files = []
+    target_arr_all_files << []
+    target_arr_all_files << []
+    j = 0   #count all jump labels (including duplicates)
+    puts '' #for better readability
+    #scan all files
+    self.search_arr.each do |object|
+      md_arr = []
+      target_arr = []
+      target_arr << []
+      target_arr << []      
+      #scan jump labels
+      object.contents.each do |line|
+         found = line.scan( scan_regex ).uniq.flatten
+         md_arr << found[1] unless found.empty?
+         #scan targets
+         target = line.scan( target_regex ).uniq.flatten
+         #target type #-A
+         target_arr[0] << target[0] unless ( target.empty? || target[0] == nil )
+         #target type field
+         target_arr[1] << target[2] unless ( target.empty? || target[2] == nil )
+      end
+      #targets
+      unless target_arr[0].empty?
+        target_arr_all_files[0] << target_arr[0]
+      end
+      unless target_arr[1].empty?
+        target_arr_all_files[1] << target_arr[1]
+      end
+      #output to commandline
+      if md_arr.empty?
+        puts 'No jump labels found in ' + object.path_and_file + '.'
+      else       
+        md_arr = md_arr.map {|element| element.chomp}
+        md_arr.delete('#')
+        #output
+        puts 'Jump labels in file ' + object.path_and_file + ':'
+        md_arr.uniq.sort.each do |jl|
+          puts jl
+        end
+        puts "Total: " + md_arr.uniq.count.to_s + "\n" + "\n"
+        j += md_arr.uniq.count
+        md_arr_all_files += md_arr
+      end      
+    end
+    #Gesamtanzeige aller jump labels, Gesamtcount
+    if j > 0
+      #targets
+      target_arr_all_files[0] = target_arr_all_files[0].flatten.map {|element| element.chomp}
+      target_arr_all_files[1] = target_arr_all_files[1].flatten.map {|element| element.chomp}
+      no_target_warning = ''
+      #output jl
+      puts "\n~~~"
+      puts 'Summary (all files):'
+      md_arr_all_files.uniq.sort.each do |jl_all_files|
+        puts jl_all_files
+        #check matching target exists
+        possible_target_form = '#-' + jl_all_files
+        unless target_arr_all_files[1].find { |e| /#{jl_all_files}/ =~ e } ||       #type field
+               target_arr_all_files[0].find { |e| /#{possible_target_form}/ =~ e }  #type #-A
+        no_target_warning += 'Warning: No target exists for +' + jl_all_files + "\n"
+        end
+      end
+      puts 'Total: ' + md_arr_all_files.uniq.count.to_s     
+      #not unique targets
+      duplicates = target_arr_all_files[0].group_by{|e| e}.keep_if{|_, e| e.length > 1}
+      puts "\n" if duplicates.count > 0 || no_target_warning != ''                  #for readability
+      if duplicates.count > 0
+        # puts 'Warning: Not unique target(s) ' + duplicates.keys.join('  ')
+        print 'Warning: Targets not unique ' 
+        duplicates.keys.each_with_index do |duplicate, index|
+          print duplicate + ' (' + duplicates[duplicate].count.to_s + ')'
+          if index < duplicates.count - 1
+            print ', ' 
+          else 
+            print "\n"
+          end
+        end
+      end
+      #unmatched jl
+      puts no_target_warning if no_target_warning != ''
+    end
+    #free jump labels
+    if j > 0
+      free_jl = JL - md_arr_all_files.uniq
+      puts "\n~~~"
+      puts "\n" + 'FREE jump labels: ' 
+      free_jl.each do |jl|
+        print jl
+        print '  '
+      end
+      puts "\n" + 'Total free: ' + free_jl.count.to_s + "\n"
+    end
+    j > 0 ? 1 : 0
+  end
+end #class end
+
 # main
+if ARGV.include?( '-var' )
+Show_var.new.find_var
+end
+
+if ARGV.include?( '-sr' )
 Show_sr.new.find_sr
+end
+
+if ARGV.include?( '-jl' )
+Show_jl.new.find_jl
+end
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#TODO: count "=" as deleting a variable
