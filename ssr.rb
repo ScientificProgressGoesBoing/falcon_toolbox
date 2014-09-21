@@ -109,9 +109,6 @@ class Show_sr
     # @file = @path_and_file.sub(/.+\//, '')
   end 
   
-  # constants
-  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ]
-  
   #returns apf file names
   #method used in all_apf_finder
   def find_apf( path_and_file = self.file_name_and_contents.path_and_file)
