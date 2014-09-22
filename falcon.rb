@@ -103,7 +103,6 @@ class File_name_and_contents
 end
 
 
-
 class Search_arr
 
   attr_reader :file_name_and_contents
@@ -453,6 +452,7 @@ end
     j > 0 ? 1 : 0
   end
 end #class end
+
 
 class Help
 
