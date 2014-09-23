@@ -159,32 +159,48 @@ class Search_arr
 end #class
 
 
-class Search_instructions
+class Search_instruction
 
   def initialize( regex_hash )
-    # regex_hash.each { |name, value| instance_variable_set('@' + name, value) }    #works fine but repeated below
     regex_hash.each do |name, value|
       instance_variable_set("@#{name}", value)
       self.class.send(:attr_reader, name)
     end
   end
+  
+  def each(&block)
+    self.instance_variables.each do |instance_variable|
+      block.call instance_variable
+    end
+  end
 
 end
 
-class Object
-#constants
-  SR = Search_instructions.new( { 'sr_jump_in_regex' => /[^ ]{1} >([a-z]{1})(  | $|$)/ , 
-                                  'sr_start_regex' => /^#\(([a-z]{1})(  | $|$)/ , 
-                                  'sr_end_regex' => /^#\)([a-z]{1})(  | $|$)/ , 
-                                  'conversion_end_regex' => /^#\+#(  | $|$)/            } )
 
-  JL = Search_instructions.new( { 'scan_regex' => /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/ ,
-                                  'target_regex' => /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/  } )                                   
+class Search_instructions_repository
+
+  attr_accessor :sr, :jl #, :var
+ 
+  def initialize
+    @sr = Search_instruction.new( { 'sr_jump_in_regex' => /[^ ]{1} >([a-z]{1})( | $|$)/ ,
+    'sr_start_regex' => /^#\(([a-z]{1})( | $|$)/ ,
+    'sr_end_regex' => /^#\)([a-z]{1})( | $|$)/ ,
+    'conversion_end_regex' => /^#\+#( | $|$)/ } )
+     
+    @jl = Search_instruction.new( { 'jl_regex' => /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/ ,
+                                     'target_regex' => /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/ } )
+                                     
+    # @var = Search_instruction.new( { 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/ ,
+                                     # 'del_regex' => / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/  } )
+                                     # 'del_regex' => / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/  } )                                   
+  end
+
+   def each(&block)
+    self.instance_variables.each do |instance_variable|
+      block.call instance_variable
+    end
+  end
   
-  # VAR = Search_instructions.new( { 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/ ,
-                                   # 'del_regex' => / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/  } )
-                                   # 'del_regex' => / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/  } )
-
 end
   
   
@@ -198,32 +214,39 @@ attr_reader :search_arr
   
   def delete_comments( line )
     line = line.gsub(/\/\/.*$|  .*$/, '')
+  end  
+  
+  def find( search_instruction_choice )    
+    search_instructions_repository = Search_instructions_repository.new
+    p search_instruction = search_instructions_repository.send( search_instruction_choice )
+      
+    # search_instructions_repository.each do |search_instruction|
+      # p search_instruction = search_instruction.to_s.sub('@', '')
+      # search_instruction = search_instructions_repository.send( search_instruction )
+      # p search_instruction
+    # end
+      
+    # search_instruction.each do |regex_name|
+      # p regex_name
+      # p regex_name.is_a? Symbol
+      # p regex_name = regex_name.to_s.sub('@', '')
+      # p regex_name.is_a? String
+    # end
+    
   end
   
-  #constants
-  SR = Search_instructions.new( { 'sr_jump_in_regex' => /[^ ]{1} >([a-z]{1})(  | $|$)/ , 
-                                  'sr_start_regex' => /^#\(([a-z]{1})(  | $|$)/ , 
-                                  'sr_end_regex' => /^#\)([a-z]{1})(  | $|$)/ , 
-                                  'conversion_end_regex' => /^#\+#(  | $|$)/            } )
-
-  JL = Search_instructions.new( { 'scan_regex' => /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/ ,
-                                  'target_regex' => /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/  } )                                   
-  
-  # VAR = Search_instructions.new( { 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/ ,
-                                   # 'del_regex' => / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/  } )
-  
-  
-  def find( search_instructions )    
-    # puts a = Object.const_get(search_instructions)
-    puts a = self.const_get(search_instructions.to_sym)
-    # puts a.is_a? String
-  end
-  
-  ["sr", "jl", "var"].each do |stuff|
+  Search_instructions_repository.new.each do |stuff|
+    stuff = stuff.to_s.sub('@', '')
 	  define_method( "find_#{stuff}" ) do 
-      self.find( "#{stuff}".upcase )
+      self.find( stuff )
   	end
   end
+  
+  # ["sr", "jl", "var"].each do |stuff|
+	  # define_method( "find_#{stuff}" ) do 
+      # self.find( stuff )
+  	# end
+  # end
   
   
 end  
@@ -425,7 +448,7 @@ end
   JL = ABC + NUM + SYMBOL
   
   def find_jl
-    scan_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
+    jl_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
     target_regex = /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/
     md_arr_all_files = []
     target_arr_all_files = []
@@ -441,7 +464,7 @@ end
       target_arr << []      
       #scan jump labels
       object.contents.each do |line|
-         found = line.scan( scan_regex ).uniq.flatten
+         found = line.scan( jl_regex ).uniq.flatten
          md_arr << found[1] unless found.empty?
          #scan targets
          target = line.scan( target_regex ).uniq.flatten
@@ -585,7 +608,7 @@ end
 Show_whatever.new.find_sr                              
 
 
-# sr = Search_instructions.new( { 'sr_jump_in_regex' => /[^ ]{1} >([a-z]{1})(  | $|$)/ , 
+# sr = Search_instruction.new( { 'sr_jump_in_regex' => /[^ ]{1} >([a-z]{1})(  | $|$)/ , 
                                   # 'sr_start_regex' => /^#\(([a-z]{1})(  | $|$)/ , 
                                   # 'sr_end_regex' => /^#\)([a-z]{1})(  | $|$)/ , 
                                   # 'conversion_end_regex' => /^#\+#(  | $|$)/            } )  
