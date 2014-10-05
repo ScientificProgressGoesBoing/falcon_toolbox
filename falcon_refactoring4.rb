@@ -190,7 +190,7 @@ end
 
 class Search_instructions_repository
 
-  attr_accessor :sr, :jl #, :var
+  attr_accessor :sr, :jl, :var
  
   def initialize
     @sr = Search_instruction.new( 
@@ -207,11 +207,12 @@ class Search_instructions_repository
                                   } 
                                 )
                                      
-    # @var = Search_instruction.new(
-                                    # { 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/ ,
+    @var = Search_instruction.new(
+                                    { 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/, 
+                                      'del_regex' => / (d[~a-z}]{1}[~a-z0-9]{1})( |$)/  #,
                                       # 'del_regex' => / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/  
-                                    # } 
-                                  # )
+                                    } 
+                                  )
   end
 
    def each(&block)
@@ -225,13 +226,13 @@ end
   
 class Show_whatever 
 
-  attr_reader :search_arr, :search_arr_object, :result_hash   #, :search_instructions_repository
+  attr_reader :search_arr, :search_arr_object, :result_hash, :search_instructions_repository
   
   def initialize
     @search_arr_object = Search_arr.new
     @search_arr = self.search_arr_object.file_and_all_apf_names_and_contents_arr
     @result_hash = self.find
-    # @search_instructions_repository = Search_instructions_repository.new
+    @search_instructions_repository = Search_instructions_repository.new
   end 
   
   def delete_comments( line )
@@ -262,24 +263,44 @@ class Show_whatever
     general_warnings
   end
    
-  def output( hash )
-    hash.uniq.each do |key, value|
-      puts value
-    end
-  end
+  # def output( hash )                                  #is this really useful?
+    # hash.each do |key, value|
+      # puts value
+    # end
+  # end
   
   def find
-    {}
+    search_instructions_repository = Search_instructions_repository.new                       ###WHY?
+    #prepare hash for collecting
+    found_hash = {}
+    search_instructions_repository.each do |repo|
+      repo = repo.to_s.sub('@', '')
+      search_instructions_repository.send( repo ).each do |name|
+        name = name.to_s.sub('@', '')
+        found_hash[name] = []
+      end
+    end
+    #collect
+    self.iterate do |line| 
+      search_instructions_repository.each do |repo|
+        repo = repo.to_s.sub('@', '')
+        search_instructions_repository.send( repo ).each do |name|
+          name = name.to_s.sub('@', '')
+          found_hash[name] << line.scan( search_instructions_repository.send( repo ).send( name ) ).flatten if line && !line.scan( search_instructions_repository.send( repo ).send( name ) ).empty? 
+        end  
+      end 
+    end
+    found_hash
   end
   
-  def iterate( &block )                                #def iterate( search_instruction )
+  def iterate( &block )                                         #def iterate( search_instruction )
     self.search_arr.each do |object|  
       path_and_file = object.path_and_file
       object.contents.each do |line|
         line = delete_comments( line )
         # do something
         block.call line
-        end
+      end
     end
   end
   
@@ -291,49 +312,8 @@ class Show_whatever
   
 end #class end
 
-a = Show_whatever.new
-# a.iterate { |line| p line }
-result = []
-variable_regex = / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/
-# a.iterate do |line| 
-# p line.scan( variable_regex ).flatten[0] if line && !line.scan( variable_regex ).empty? 
-# end
-
-search_instructions_repository = Search_instructions_repository.new
-#search_instructions_repository.jl.jl_regex
-
-
-arr = []
-search_instructions_repository.jl.each do |name|
-   name = name.to_s.sub('@', '')
-   arr << ( "#{name}" = [] )
-end
-
-p arr
-abort
-
-a.iterate do |line| 
-  search_instructions_repository.jl.each do |name|
-   name = name.to_s.sub('@', '')
-   p name if line && !line.scan( search_instructions_repository.jl.send( name ) ).empty? 
-   p line.scan( search_instructions_repository.jl.send( name ) ).flatten if line && !line.scan( search_instructions_repository.jl.send( name ) ).empty? 
-  end 
-end
-
-# a.search_instructions_repository.jl.each do |n|
-  # p n
-  # n = n.to_s.sub('@', '')
-  # p regex = a.search_instructions_repository.jl.send( n )
-# end
-
   
 class Show_var < Show_whatever
-
-  # attr_reader :search_arr, :search_arr_object
-  
-  # def initialize    #inherits constructor from parent class
-    # super
-  # end 
   
   def search_for_variables
     variable_regex = / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/
@@ -368,7 +348,7 @@ class Show_var < Show_whatever
     return false
   end
   
-  def find
+  def find_old
     var_found_hash = self.search_for_variables
     total_distinct_variable_count = var_found_hash.values.flatten.uniq.count  
     total_occurences_variable_count = var_found_hash.values.flatten.count.to_s
@@ -436,6 +416,26 @@ class Show_var < Show_whatever
   end
     
 end #class end
+
+a = Show_var.new
+a.find
+
+a.search_instructions_repository.var.each do |name|
+          name = name.to_s.sub('@', '')
+          p a.result_hash[name]
+        end
+
+
+# search_instructions_repository = a.search_instructions_repository
+# search_instructions_repository.each do |repo|
+        # repo = repo.to_s.sub('@', '')
+        # search_instructions_repository.send( repo ).each do |name|
+          # name = name.to_s.sub('@', '')
+         
+        # end  
+      # end 
+      
+
 
 
 class Show_sr < Show_whatever
