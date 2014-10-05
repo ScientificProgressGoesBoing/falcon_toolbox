@@ -217,80 +217,67 @@ end
   
 class Show_whatever 
 
-attr_reader :search_arr, :search_instructions_repository
+  attr_reader :search_arr, :search_arr_object, :result_hash   #, :search_instructions_repository
   
   def initialize
-    @search_arr = Search_arr.new.file_and_all_apf_names_and_contents_arr
-    @search_instructions_repository = Search_instructions_repository.new
-    # @result_hash = {}
+    @search_arr_object = Search_arr.new
+    @search_arr = self.search_arr_object.file_and_all_apf_names_and_contents_arr
+    @result_hash = self.find
+    # @search_instructions_repository = Search_instructions_repository.new
   end 
   
   def delete_comments( line )
     line = line.gsub(/\/\/.*$|  .*$/, '')
   end  
-  
-  # def iterate( search_instruction )
-    # self.search_arr.each do |object|  
-      # path_and_file = object.path_and_file
-      # object.contents.each do |line|
-        # line = line.delete_comments
-        # # do something
-        # # search_instruction.each do |si_name, si|
-          # # line.scan
-        # # end
-    # end
-  # end
-  
-  def collect( found, pointer, found_hash )
-    if found_hash[pointer]
-      found_hash[pointer].push found
-    else
-      found_hash[pointer] = [ found ]
-    end
-    found_hash
-  end
-  
-  def find( search_instruction )  
-    all_found_hash = {}
-    #iterate through files
-    self.search_arr.each do |object|  
-      path_and_file = object.path_and_file
-      #iterate through lines
-      found_hash = {}
-      object.contents.each do |line|
-        line = delete_comments( line )
-        # p line
-        # p line.match(/( |^#)\+([#]?[^\+ #-]+)([^#]|$)/)
-      
-        #use all regexes on each line        
-        self.search_instructions_repository.send( search_instruction ).each do |name_of_instruction|
-          name_of_instruction = name_of_instruction.to_s.sub('@', '')
-          regex = self.search_instructions_repository.send( search_instruction ).send( name_of_instruction )
-          found = line.scan( regex ).flatten
-          unless found.empty?
-            p found.each { |found| collect( found, name_of_instruction, found_hash ) }
-          end
-        end
+ 
+  def output_general_warnings
+    self.search_arr_object.hints_hash.each do |key, files|
+      files.each do |file|
+      puts 'Warning! File is linked to but does not exist: ' + file
       end
-    end  
-  all_found_hash
+    end
+    puts ''
+    puts self.search_arr_object.file_chooser.hints_hash.values[0]
   end
   
-end  
-
-  
-class Show_var
-
-  attr_reader :search_arr, :search_arr_object
-  
-  def initialize
-    @search_arr_object = Search_arr.new
-    @search_arr = self.search_arr_object.file_and_all_apf_names_and_contents_arr
-  end 
-  
-  def delete_comments( line )
-    line = line.gsub(/\/\/.*$|  .*$/, '')
+   def get_general_warnings
+    general_warnings = Show_tracer.new.get_specific_warnings
+    self.search_arr_object.hints_hash.each do |key, files|
+      files.each do |file|
+      general_warnings << ( 'Warning! File is linked to but does not exist: ' + file )
+      end
+    end
+    general_warnings << ''
+    general_warnings << self.search_arr_object.file_chooser.hints_hash.values[0]
+    general_warnings
   end
+   
+  def output( hash )
+    hash.uniq.each do |key, value|
+      puts value
+    end
+  end
+  
+  def find
+    {}
+  end
+  
+  # constants
+  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
+  NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
+  SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
+  JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
+  
+end #class end
+
+  
+class Show_var < Show_whatever
+
+  # attr_reader :search_arr, :search_arr_object
+  
+  # def initialize    #inherits constructor from parent class
+    # super
+  # end 
   
   def search_for_variables
     variable_regex = / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/
@@ -330,66 +317,78 @@ class Show_var
     total_distinct_variable_count = var_found_hash.values.flatten.uniq.count  
     total_occurences_variable_count = var_found_hash.values.flatten.count.to_s
     #save for output
-    result_hash_var = {}
-    result_hash_var = result_hash_var.merge( 'found' => var_found_hash )
-    result_hash_var = result_hash_var.merge( 'total_disctinct_count' => total_distinct_variable_count )
-    result_hash_var = result_hash_var.merge( 'total_occurences_count' => total_occurences_variable_count )
+    result_hash = {}
+    result_hash = result_hash.merge( 'found' => var_found_hash )
+    result_hash = result_hash.merge( 'total_disctinct_count' => total_distinct_variable_count )
+    result_hash = result_hash.merge( 'total_occurences_count' => total_occurences_variable_count )
     #check if deleted
-    result_hash_var = result_hash_var.merge( 'warning_not_deleted' => [] )
+    result_hash = result_hash.merge( 'warning_not_deleted' => [] )
     var_found_hash.values.flatten.uniq.sort.each do |variable|
       deleted = self.is_deleted?( variable )
       unless deleted
-       result_hash_var['warning_not_deleted'] << variable
+        result_hash['warning_not_deleted'] << variable
       end
     end
     #free variables
-    result_hash_var = result_hash_var.merge( 'free_count' => ( 936 - total_distinct_variable_count ) )
-    result_hash_var
+    result_hash = result_hash.merge( 'free_count' => ( 936 - total_distinct_variable_count ) )
+    #result
+    result_hash
   end 
   
   def output
-    result_hash = self.find
     puts '' #for readability
-    puts 'Per file: '
+    puts '~~ Variables per file'
     puts ''
-    result_hash['found'].each do |file, values|
+    self.result_hash['found'].each do |file, values|
       puts file.to_s 
       puts values.uniq.sort.join(', ')                     
       puts 'Total: ' + values.uniq.count.to_s
       puts ''
     end
-    puts 'Summary: '
-    result_hash.each do |key, value|
-      unless key == 'found' || key == 'free_count'
-        puts key.to_s + "\t" + value.to_s
-      end
-    end
-    puts 'Free variables left' + "\t" + result_hash['free_count'].to_s
+    puts ''
+    puts '~~ Summary'    
+    puts ''
+    puts self.result_hash['found'].values.flatten.uniq.join(', ')
+    puts 'Total: ' + self.result_hash['found'].values.flatten.uniq.count.to_s
+    puts 'Total occurences: ' + self.result_hash['total_occurences_count']
+    #free variables
+    puts 'Free variables left: ' + self.result_hash['free_count'].to_s
     puts ''  #for readability
-    self.search_arr_object.hints_hash['file_does_not_exist'].each do |file|
-      puts 'Warning! File is linked to but does not exist: ' + file
-    end
     puts ''  #for readability
-    puts self.search_arr_object.file_chooser.hints_hash.values[0]
+    puts '~~ Warnings'
+    puts ''  #for readability
+    #specific warnings
+    self.output_specific_warnings
+    # #general warnings  
+    # self.output_general_warnings
   end
   
-  def output_warnings
-    self.search_arr_object.hints_hash['file_does_not_exist'].each do |file|
-      puts 'Warning! File is linked to but does not exist: ' + file
+  def get_specific_warnings
+    specific_warnings = if self.result_hash['warning_not_deleted'].count == 1
+                          [ 'Warning! Variable that is never deleted: ' + "\n" + self.result_hash['warning_not_deleted'].join(', ') ]
+                        elsif self.result_hash['warning_not_deleted'].count > 1
+                          [ 'Warning! Variables that are never deleted: ' + self.result_hash['warning_not_deleted'].join(', ') ]
+                        end
+  end
+  
+  def output_specific_warnings
+    unless self.get_specific_warnings.empty?
+      self.get_specific_warnings.each { |warning| puts warning }
+    else
+      puts 'No warnings related to variables.'
     end
   end
     
 end #class end
 
 
-class Show_sr
+class Show_sr < Show_whatever
 
   attr_reader :search_arr, :search_arr_object
   
-  def initialize
-    @search_arr_object = Search_arr.new
-    @search_arr = self.search_arr_object.file_and_all_apf_names_and_contents_arr
-  end 
+  # def initialize
+    # super
+  # end 
   
   def find
     sr_jump_in_regex     = /[^ ]{1} >([a-z]{1})(  | $|$)/
@@ -424,10 +423,10 @@ class Show_sr
         sr_start_found = line.scan( sr_start_regex ).flatten
         unless sr_start_found.empty?
           if file.end_with?( '.tmpl', '.fcv', '.ipa' )  && ( index < conversion_end_line )
-            warnings << 'Warning: Definition of subroutine ' + sr_start_found[0].to_s + ' starts before the end of conversion #+#.'
+            warnings << 'Warning! Definition of subroutine ' + sr_start_found[0].to_s + ' starts before the end of conversion #+#.'
           end
           if file.end_with?('.apf')
-            warnings << 'Warning: Subroutine defined in "' + file + '" instead of main file.'
+            warnings << 'Warning! Subroutine defined in "' + file + '" (move to main file).'
           else
             if sr_start_found_hash[file]
               sr_start_found_hash[file].push sr_start_found[0]
@@ -453,12 +452,12 @@ class Show_sr
     sr_start_found_hash.each do |file, arr|
       arr.each do |element|
         unless sr_end_found_hash.values.flatten.include? element
-          warnings << 'Warning: Subroutine ' + element + ' is not closed.'
+          warnings << 'Warning! Subroutine ' + element + ' is not closed.'
         else
           subroutines << element
         end
         unless sr_jump_in_hash.values.flatten.include? element
-          warnings << 'Subroutine ' + element + ' is not used.'
+          warnings << 'Info: Subroutine ' + element + ' is not used.'
         end
       end 
     end
@@ -466,7 +465,7 @@ class Show_sr
     sr_jump_in_hash.each do |file, arr|
       arr.each do |element|
        unless sr_start_found_hash.values.flatten.include? element
-          warnings << 'Warning: No subroutine ' + element + ' despite >' + element + ' in "' + file +'".'
+          warnings << 'Warning! No subroutine ' + element + ' despite >' + element + ' in "' + file + '".'
         end
       end
     end
@@ -483,38 +482,45 @@ class Show_sr
   def output
     result_hash = self.find
     puts '' #for readability
+    puts '~~ Subroutines'
+    puts '' #for readability
     result_hash['sr_start_found_hash'].each do |file, arr|
       puts 'Subroutines implemented in file "' + file + '":'
       puts arr.sort.join(', ')
     end
     puts '' #for readability
-    puts result_hash['warnings'].uniq.sort.join("\n")    
-    #output general warnings 
-    puts ''  #for readability
-    self.search_arr_object.hints_hash['file_does_not_exist'].each do |file|
-      puts 'Warning! File is linked to but does not exist: ' + file
-    end
-    puts ''  #for readability
-    puts self.search_arr_object.file_chooser.hints_hash.values[0]
+    puts '' #for readability
+    puts '~~ Warnings'
+    puts '' #for readability
+    self.output_specific_warnings
+    # #output general warnings 
+    # self.output_general_warnings
   end #method end
+  
+  def get_specific_warnings
+    specific_warnings = result_hash['warnings'].uniq.sort.reject { |key, value| key if value =~ /^ *$/}
+  end
+  
+  def output_specific_warnings
+    unless self.get_specific_warnings.empty?
+      puts self.get_specific_warnings
+    else
+      puts 'No warnings related to subroutines.'
+    end
+  end
       
 end #class end
 
 
-class Show_jl
+class Show_jl < Show_whatever
 
-  attr_reader :search_arr, :search_arr_object
+  # attr_reader :search_arr, :search_arr_object
     
-  def initialize
-    @search_arr_object = Search_arr.new
-    @search_arr = self.search_arr_object.file_and_all_apf_names_and_contents_arr
-  end
+  # def initialize
+    # super
+  # end
   
-  # constants
-  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
-  NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
-  SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
-  JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
+  # constants # moved to parent class
   
   def find
     jl_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
@@ -604,7 +610,7 @@ class Show_jl
         end
       end
     end
-  warning_target_missing.uniq.sort  
+  warning_target_missing = warning_target_missing.uniq.sort.reject { |element| element if element =~ /^ *$/}  
   end #end method
   
   def check_target_not_unique( result_hash )
@@ -614,7 +620,7 @@ class Show_jl
     warning_target_not_unique = []
     duplicates = targets_type_label.group_by{ |e| e }.keep_if{ |_, e| e.length > 1 }
     if duplicates.count > 0
-      warning_target_not_unique = duplicates.sort.map { |arr| [ arr[0], arr[1] = arr[1].count ] }
+      warning_target_not_unique = duplicates.sort.map { |arr| [ arr[0], arr[1] = arr[1].count ] }.reject { |element| element if element =~ /^ *$/} 
     end
     warning_target_not_unique
   end
@@ -628,25 +634,19 @@ class Show_jl
                     'duplicates'  => duplicates
                  }
   end
-  
-  def check_results
-    check_results = self.run_checks    
-    check_results_worded_out = []
-    check_results_worded_out << 'Warning! No target exists for +' + check_results['missing'].join(', ') + '.'
-    check_results['duplicates'].each do |duplicate, duplicate_count|
-      check_results_worded_out << ( 'Warning! Target not unique: ' + duplicate + ' (' + duplicate_count.to_s + 'x).' )
-    end
-  end
     
   def output
     result_hash = self.find
     all_jl_arr = []
     total_distinct_count = 0
     total_occurrences_count = 0
+    puts ''
+    puts '~~ Jump labels per file'
+    puts ''
     result_hash['jl_hash_all_files'].each do |file, arr|
       if arr.empty?
         puts 'No jump labels found in ' + file + '.'
-      else       
+      else  
         arr = arr.map { |element| element.chomp }
         arr.delete('#')
         puts 'Jump labels in ' + file + ':'
@@ -659,23 +659,13 @@ class Show_jl
     end
     #summary    
     if result_hash['jl_hash_all_files'].count > 1 && total_distinct_count > 0
-      puts "\n~~~"
-      puts 'Summary (all files):'
+      puts ''
+      puts '~~ Summary'
+      puts ''
       puts all_jl_arr.uniq.sort.join(', ')
       puts 'Total: ' + all_jl_arr.uniq.count.to_s   
     end
-    #output warnings    
-    check_results = self.check_results
     puts ''  #for readability
-    check_results.each do |warning|
-      puts warning
-    end
-    #output general warnings
-    self.search_arr_object.hints_hash['file_does_not_exist'].each do |file|
-      puts 'Warning! File is linked to but does not exist: ' + file
-    end
-    puts ''  #for readability
-    puts self.search_arr_object.file_chooser.hints_hash.values[0]
     #free jump labels
     if total_distinct_count > 0
       free_jl = JL - all_jl_arr.uniq
@@ -684,9 +674,70 @@ class Show_jl
       puts free_jl.join('  ')
       puts 'Total free: ' + free_jl.count.to_s 
     end
+    puts ''  #for readability
+    puts ''  #for readability
+    #output specific warnings
+    puts '~~ Warnings'
+    puts ''
+    self.output_specific_warnings 
+    # #output general warnings
+    # self.output_general_warnings
+  end
+  
+  def get_specific_warnings
+    check_results = self.run_checks    
+    check_results_worded_out = []
+    check_results_worded_out << 'Warning! No target exists for +' + check_results['missing'].join(', ') + '.'
+    check_results['duplicates'].each do |duplicate, duplicate_count|
+      check_results_worded_out << ( 'Warning! Target not unique: ' + duplicate + ' (' + duplicate_count.to_s + 'x).' )
+    end
+    check_results_worded_out
+  end
+  
+  def output_specific_warnings
+    unless self.get_specific_warnings
+      self.get_specific_warnings.each do |warning|
+        puts warning
+      end
+    else
+      puts 'No warnings related to jump labels.'
+    end
   end
   
 end #class end
+
+
+class Show_tracer < Show_whatever
+
+  # attr_reader :search_arr
+  
+  # def initialize
+    # super
+  # end
+
+  def get_specific_warnings
+    tracer_warnings = []
+    tracer_regex = /^#\?/
+    self.search_arr.each do |object|  
+        file = object.path_and_file
+        object.contents.each_with_index do |line, index|
+          unless line.scan( tracer_regex ).flatten.empty?
+            tracer_warnings << ( 'Warning! Tracer left in "' + file + '" at line ' + ( index + 1 ).to_s )
+          end
+        end
+    end 
+    tracer_warnings    
+  end      
+
+  def output_specific_warnings
+    tracer_warnings = self.get_specific_warnings
+    unless tracer_warnings.count == 0
+      puts ''
+      puts tracer_warnings
+    end
+  end
+
+end      
 
 
 class Get_all_warnings
@@ -695,27 +746,18 @@ class Get_all_warnings
   
   def initialize
   @warnings =   {
-                  'var'     => Show_var.new.find['warning_not_deleted'],
-                  'sr'      => Show_sr.new.find['warnings'],
-                  'jl'      => Show_jl.new.check_results,
-                  'info' => self.combine_general_warnings
+                  'var'     => Show_var.new.get_specific_warnings,
+                  'sr'      => Show_sr.new.get_specific_warnings,
+                  'jl'      => Show_jl.new.get_specific_warnings,
+                  'info'    => Show_whatever.new.get_general_warnings     #includes tracer warnings
                 }
   end
-  
-  def combine_general_warnings
-    combined_general_warnings =   Show_var.new.search_arr_object.file_chooser.hints_hash.values.concat(
-                                  Show_sr.new.search_arr_object.file_chooser.hints_hash.values).concat(
-                                  Show_jl.new.search_arr_object.file_chooser.hints_hash.values)
-                                  .flatten.uniq.sort                           
-  end
-  
-  # self.search_arr_object.hints_hash['file_does_not_exist'].each do |file|
-      # puts 'Warning! File is linked to but does not exist: ' + file
-    # end
-  
+ 
   def output_all
-    warnings.each do |topic, warning|
-        puts topic + ': ' + warning.join(', ')
+    self.warnings.each do |topic, arr|
+      arr.each do |warning|
+        puts warning
+      end
     end
   end
   
@@ -725,10 +767,15 @@ class Get_all_warnings
     end
   end
   
-  def output_except( key )
-    warnings = self.warnings.tap {|h| h.delete(key)}
-    warnings.each do |topic, warning|
-        puts topic + ': ' + warning.join(', ')
+  def output_except( *keys )
+    warnings = self.warnings
+    keys.each do |key|
+      warnings = warnings.tap {|h| h.delete(key)}
+    end
+    warnings.each do |topic, arr|
+      arr.each do |warning|
+        puts warning
+      end
     end
   end
   
@@ -746,8 +793,9 @@ class Help
     puts '-var' + "\t" + 'to list Variables'
     puts '-sr' + "\t" + 'to list Subroutines'
     puts '-jl' + "\t" + 'to list Jump Lables'
+    puts '-w'  + "\t" + 'to get all warnings'
     puts ''
-    puts 'Example: ruby falcon.rb -jl'
+    puts 'Example: ruby falcon.rb -jl -w'
     puts '(combination of options is possible)'    
   end
   
@@ -766,7 +814,7 @@ class Validity_checker
     invalid_arguments = []
     valid_arguments = []
     ARGV.each do |argument|
-      unless ['-var', '-sr', '-jl'].include? argument                           #register new options HERE!!!
+      unless ['-var', '-sr', '-jl', '-w'].include? argument           #register new options HERE!!!
         invalid_arguments << argument
       else
         valid_arguments << argument
@@ -789,27 +837,14 @@ class Validity_checker
   
 end 
 
-#test
-# p  a = Show_var.new.search_arr_object.file_chooser.hints_hash
-# p Show_var.new.search_arr.file_chooser.file_choice_reader #hints_hash
-# Show_whatever.new.find_sr                              
-# sr = Search_instruction.new( { 'sr_jump_in_regex' => /[^ ]{1} >([a-z]{1})(  | $|$)/ , 
-                                  # 'sr_start_regex' => /^#\(([a-z]{1})(  | $|$)/ , 
-                                  # 'sr_end_regex' => /^#\)([a-z]{1})(  | $|$)/ , 
-                                  # 'conversion_end_regex' => /^#\+#(  | $|$)/            } )  
-# p sr.sr_jump_in_regex                                  
-# a = Show_whatever.new
-# p a.find( 'jl' )
-# a.search_instructions_repository.jl.each do |n|
-  # p n
-  # n = n.to_s.sub('@', '')
-  # p regex = a.search_instructions_repository.jl.send( n )
-# end
-
 
       
       
 # main
+system 'cls'
+separator = "\n#####>\n"
+separator_required = ( ( ARGV - ['-w'] ).count > 1 )
+
 if ARGV.count > 0
   Validity_checker.new.output
 else
@@ -817,26 +852,33 @@ else
   Help.new
 end
 
-# if ARGV.count > 1
-  # #puts separator
-# end
 
 if ARGV.include?( '-var' )
+  print separator if separator_required
   Show_var.new.output
 end
 
 if ARGV.include?( '-sr' )
+  print separator if separator_required
   Show_sr.new.output
 end
 
 if ARGV.include?( '-jl' )
+  print separator if separator_required
   Show_jl.new.output
 end
 
-# Get_all_warnings.new.warnings
-# Get_all_warnings.new.output( 'general' )
-Get_all_warnings.new.output( 'sr' )
-# Get_all_warnings.new.output_except( 'sr' )
+if ARGV.include?( '-w' )
+  options = ARGV - [ '-w' ]
+  keys = options.map { |option| option = option.sub(/-/, '') }  
+  keys.push( 'info' )
+  Get_all_warnings.new.output_except( *keys )
+end
+
+Get_all_warnings.new.output( 'info' )
+
+puts ''
+
 
 
 
