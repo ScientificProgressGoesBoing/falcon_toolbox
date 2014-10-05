@@ -301,6 +301,17 @@ variable_regex = / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/
 
 search_instructions_repository = Search_instructions_repository.new
 #search_instructions_repository.jl.jl_regex
+
+
+arr = []
+search_instructions_repository.jl.each do |name|
+   name = name.to_s.sub('@', '')
+   arr << ( "#{name}" = [] )
+end
+
+p arr
+abort
+
 a.iterate do |line| 
   search_instructions_repository.jl.each do |name|
    name = name.to_s.sub('@', '')
