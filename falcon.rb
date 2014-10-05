@@ -1,4 +1,4 @@
-#This ruby script shows a deduplicated list of all falcon FEL variables currently in use
+#This ruby script shows falcon FEL variables, subroutines, and jump labels
 #Adjust path 'param' as needed
 #To be used with .fcv, .ipa and .tmpl files
 
