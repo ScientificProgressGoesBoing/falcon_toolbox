@@ -269,22 +269,11 @@ class Show_whatever
   end
    
   # def output( hash )                                  #is this really useful?
-    # hash.each do |key, value|
-      # puts value
-    # end
   # end
   
   def find
-    search_instructions_repository = Search_instructions_repository.new                       ###WHY?
-    found_hash = {}
-                                        # search_instructions_repository.each do |repo|
-                                          # repo = repo.to_s.sub('@', '')
-                                          # search_instructions_repository.send( repo ).each do |name|
-                                            # name = name.to_s.sub('@', '')
-                                            # found_hash[name] = {}
-                                          # end
-                                        # end
-    #collect
+    search_instructions_repository = self.search_instructions_repository
+    found_hash = {}                                      
     self.iterate do |line, path_and_file| 
       search_instructions_repository.each do |repo|
         repo = repo.to_s.sub('@', '')
@@ -320,26 +309,19 @@ class Show_whatever
     end
   end
   
-  # constants
-  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
-  NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
-  SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
-  JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
+  # def clean_search_instruction_names  #not in use but works
+    # cleaned = []
+    # self.search_instructions_repository.each do |name|
+      # name = name.to_s.sub('@', '')
+      # cleaned << name
+    # end
+    # cleaned
+  # end  
   
 end #class end
 
   
 class Show_var < Show_whatever
-
-  #inherits: readers, initializer, iterate, find   
-
-  def clean
-    self.search_instructions_repository.var.each do |name|
-      name = name.to_s.sub('@', '')
-      puts name
-      p a.result_hash[name]
-    end
-  end  
   
   def is_deleted? ( variable )
     del_regex = / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/
@@ -555,14 +537,16 @@ end #class end
 
 
 class Show_jl < Show_whatever
-
-  # attr_reader :search_arr, :search_arr_object
     
   # def initialize
     # super
   # end
   
-  # constants # moved to parent class
+  # constants
+  ABC = [ 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  'Y',  'Z'  ] 
+  NUM = [  '0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9'  ]
+  SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
+  JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
   
   def find
     jl_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
@@ -884,7 +868,8 @@ end  # class end
 #main test
 
 
-a = Show_whatever.new.result_hash
+b = Show_whatever.new
+a = b.result_hash
 
 # p a
 
