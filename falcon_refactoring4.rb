@@ -314,6 +314,16 @@ class Show_whatever
     end
   end
   
+  def get_applicable_result
+    result = self.result_hash[self.class.to_s.downcase.sub(/^.*_/, '')]
+  end
+  
+  def iterate_applicable_result( &block )
+    self.get_applicable_result.each do |regex_name, hash|
+      block.call regex_name, hash
+    end
+  end
+  
   # def clean_search_instruction_names  #not in use but works
     # cleaned = []
     # self.search_instructions_repository.each do |name|
@@ -327,6 +337,24 @@ end #class end
 
   
 class Show_var < Show_whatever
+
+  def refine
+    self.iterate_applicable_result do |regex_name, hash|
+      self.refine_var(hash) if regex_name == 'del_regex'
+      self.refine_del(hash) if regex_name == 'variable_regex'       
+    end
+    #return value??
+  end
+  
+  def refine_var(hash)
+
+  end
+  
+  def refine_del(hash)
+
+  end
+  
+  
   
   def is_deleted? ( variable )
     del_regex = / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/
@@ -876,19 +904,11 @@ end  # class end
 #main test
 
 
-a = Show_jl.new
+a = Show_var.new
 b = a.result_hash
 
+a.refine
 
-b.each do |name, hash|
-  puts name + '-->>>'
-  hash.each do |file, result|
-    print "\t"
-    puts file + '-->'
-    print "\t"
-    p result 
-  end
-end
 
 
       
