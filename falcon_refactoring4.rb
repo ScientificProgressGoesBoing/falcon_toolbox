@@ -282,15 +282,20 @@ class Show_whatever
           #if match successful
           if line && !line.scan( search_instructions_repository.send( repo ).send( name ) ).empty? 
             #make sure hash exists
-            unless found_hash[name]   
-               found_hash = found_hash.merge( { name => { path_and_file => Array.new } } ) 
+            
+            unless found_hash[repo]
+              found_hash = found_hash.merge( { repo => { name => { path_and_file => Array.new } } } )
             end
-            unless found_hash[name][path_and_file]    
-            temp = found_hash[name].merge( path_and_file => [] )
-            found_hash[name] = found_hash[name].merge( temp )
+            unless found_hash[repo][name]  
+              temp = found_hash[repo].merge( { name => { path_and_file => Array.new } } )              
+              found_hash[repo] = found_hash[repo].merge( temp )
             end
+            unless found_hash[repo][name][path_and_file]    
+            temp = found_hash[repo][name].merge( path_and_file => Array.new )
+            found_hash[repo][name] = found_hash[repo][name].merge( temp )
+            end                     
             #throw in 
-            found_hash[name][path_and_file] << line.scan( search_instructions_repository.send( repo ).send( name ) ).flatten  
+            found_hash[repo][name][path_and_file] << line.scan( search_instructions_repository.send( repo ).send( name ) ).flatten  
           end
         end  
       end 
@@ -865,6 +870,9 @@ end  # class end
 
 
 
+
+
+
 #main test
 
 
@@ -928,3 +936,4 @@ end
 
 
 
+p Show_jl.new.find
