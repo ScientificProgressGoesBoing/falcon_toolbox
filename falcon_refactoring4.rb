@@ -419,7 +419,7 @@ class Show_sr < Show_whatever
     # super
   # end 
   
-  def find
+  def find_old
     sr_jump_in_regex     = /[^ ]{1} >([a-z]{1})(  | $|$)/
     sr_start_regex       = /^#\(([a-z]{1})(  | $|$)/
     sr_end_regex         = /^#\)([a-z]{1})(  | $|$)/
@@ -553,7 +553,7 @@ class Show_jl < Show_whatever
   SYMBOL = [ '!', '"', '$', '%', '&', '/', '@', '=', '.', ',', ':', ';'  ]
   JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
   
-  def find
+  def find_old
     jl_regex = /( |^#)\+([#]?[^\+ #-]+)([^#]|$)/
     target_regex = /^(#-[^+ #]+($| ))|^(#[^+ #]+($| ))/
     jl_hash_all_files = {}
@@ -876,12 +876,11 @@ end  # class end
 #main test
 
 
-b = Show_whatever.new
-a = b.result_hash
+a = Show_jl.new
+b = a.result_hash
 
-# p a
 
-a.each do |name, hash|
+b.each do |name, hash|
   puts name + '-->>>'
   hash.each do |file, result|
     print "\t"
@@ -936,4 +935,3 @@ end
 
 
 
-p Show_jl.new.find
