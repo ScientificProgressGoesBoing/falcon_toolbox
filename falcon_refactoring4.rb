@@ -190,7 +190,14 @@ end
 
 class Search_instructions_repository
 
-  attr_accessor :sr, :jl, :var
+  attr_reader :sr, :jl, :var
+
+ # def initialize
+    # Show_whatever.subclasses.each do |subclass|
+      # instance_variable_set("@#{subclass.to_s.downcase}", subclass.new.search_instruction)
+      # self.class.send(:attr_reader, subclass.to_s.downcase)
+    # end
+  # end
  
   def initialize
     @sr = Search_instruction.new( 
@@ -231,14 +238,12 @@ class Show_whatever
   def initialize
     @search_arr_object = Search_arr.new
     @search_arr = self.search_arr_object.file_and_all_apf_names_and_contents_arr
-    @result_hash = self.find
     @search_instructions_repository = Search_instructions_repository.new
+    @result_hash = self.find
   end 
   
   def delete_comments( line )
-    unless line.scan(/\/\//).empty?
-      line = line.sub(/\/\/.*$|  .*$/, '')
-    end
+    line = line.sub(/\/\/.*$|  .*$/, '') || line
   end  
  
   def output_general_warnings
@@ -251,7 +256,7 @@ class Show_whatever
     puts self.search_arr_object.file_chooser.hints_hash.values[0]
   end
   
-   def get_general_warnings
+   def collect_general_warnings
     general_warnings = Show_tracer.new.get_specific_warnings
     self.search_arr_object.hints_hash.each do |key, files|
       files.each do |file|
@@ -271,35 +276,46 @@ class Show_whatever
   
   def find
     search_instructions_repository = Search_instructions_repository.new                       ###WHY?
-    #prepare hash for collecting
     found_hash = {}
-    search_instructions_repository.each do |repo|
-      repo = repo.to_s.sub('@', '')
-      search_instructions_repository.send( repo ).each do |name|
-        name = name.to_s.sub('@', '')
-        found_hash[name] = []
-      end
-    end
+                                        # search_instructions_repository.each do |repo|
+                                          # repo = repo.to_s.sub('@', '')
+                                          # search_instructions_repository.send( repo ).each do |name|
+                                            # name = name.to_s.sub('@', '')
+                                            # found_hash[name] = {}
+                                          # end
+                                        # end
     #collect
-    self.iterate do |line| 
+    self.iterate do |line, path_and_file| 
       search_instructions_repository.each do |repo|
         repo = repo.to_s.sub('@', '')
         search_instructions_repository.send( repo ).each do |name|
           name = name.to_s.sub('@', '')
-          found_hash[name] << line.scan( search_instructions_repository.send( repo ).send( name ) ).flatten if line && !line.scan( search_instructions_repository.send( repo ).send( name ) ).empty? 
+          #if match successful
+          if line && !line.scan( search_instructions_repository.send( repo ).send( name ) ).empty? 
+            #make sure hash exists
+            unless found_hash[name]   
+               found_hash = found_hash.merge( { name => { path_and_file => Array.new } } ) 
+            end
+            unless found_hash[name][path_and_file]    
+            temp = found_hash[name].merge( path_and_file => [] )
+            found_hash[name] = found_hash[name].merge( temp )
+            end
+            #throw in 
+            found_hash[name][path_and_file] << line.scan( search_instructions_repository.send( repo ).send( name ) ).flatten  
+          end
         end  
       end 
     end
     found_hash
   end
   
-  def iterate( &block )                                         #def iterate( search_instruction )
+  def iterate( &block )                                      
     self.search_arr.each do |object|  
       path_and_file = object.path_and_file
       object.contents.each do |line|
         line = delete_comments( line )
         # do something
-        block.call line
+        block.call line, path_and_file
       end
     end
   end
@@ -314,26 +330,16 @@ end #class end
 
   
 class Show_var < Show_whatever
-  
-  def search_for_variables
-    variable_regex = / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/
-    var_found_hash = {}   
-    self.search_arr.each do |object|  
-    file = object.path_and_file
-      object.contents.each do |line|
-        line = delete_comments( line )
-        var_found = line.scan( variable_regex ).flatten
-        unless var_found.empty?
-          if var_found_hash[file]
-            var_found_hash[file].push var_found[0] 
-          else
-            var_found_hash[file] = [ var_found[0] ]
-          end
-        end
-      end
+
+  #inherits: readers, initializer, iterate, find   
+
+  def clean
+    self.search_instructions_repository.var.each do |name|
+      name = name.to_s.sub('@', '')
+      puts name
+      p a.result_hash[name]
     end
-    var_found_hash
-  end          
+  end  
   
   def is_deleted? ( variable )
     del_regex = / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/
@@ -416,26 +422,6 @@ class Show_var < Show_whatever
   end
     
 end #class end
-
-a = Show_var.new
-a.find
-
-a.search_instructions_repository.var.each do |name|
-          name = name.to_s.sub('@', '')
-          p a.result_hash[name]
-        end
-
-
-# search_instructions_repository = a.search_instructions_repository
-# search_instructions_repository.each do |repo|
-        # repo = repo.to_s.sub('@', '')
-        # search_instructions_repository.send( repo ).each do |name|
-          # name = name.to_s.sub('@', '')
-         
-        # end  
-      # end 
-      
-
 
 
 class Show_sr < Show_whatever
@@ -805,7 +791,7 @@ class Get_all_warnings
                   'var'     => Show_var.new.get_specific_warnings,
                   'sr'      => Show_sr.new.get_specific_warnings,
                   'jl'      => Show_jl.new.get_specific_warnings,
-                  'info'    => Show_whatever.new.get_general_warnings     #includes tracer warnings
+                  'info'    => Show_whatever.new.collect_general_warnings     #includes tracer warnings
                 }
   end
  
@@ -891,7 +877,26 @@ class Validity_checker
     end 
   end
   
-end 
+end  # class end
+
+
+
+#main test
+
+
+a = Show_whatever.new.result_hash
+
+# p a
+
+a.each do |name, hash|
+  puts name + '-->>>'
+  hash.each do |file, result|
+    print "\t"
+    puts file + '-->'
+    print "\t"
+    p result 
+  end
+end
 
 
       
