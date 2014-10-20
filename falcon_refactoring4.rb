@@ -344,6 +344,10 @@ class Show_whatever
     puts ''
   end
   
+  def output
+    #Needs to be implemented in each class, calling the above methods.
+  end
+  
   # def clean_search_instruction_names  #not in use but works
     # cleaned = []
     # self.search_instructions_repository.each do |name|
@@ -360,49 +364,61 @@ class Show_var < Show_whatever
 
   def refine
     refine_hash = {}
-    output_hash = {}
     self.iterate_applicable_result do |regex_name, hash|
-    output_hash = self.refine_var( regex_name, hash ) if regex_name == ( self.class.to_s.downcase.sub(/^.*_/, '') + '_regex' )
-      refine_hash = refine_hash.merge ( { regex_name => self.refine_var( regex_name, hash ) } ) if regex_name == 'var_regex' 
-      refine_hash = refine_hash.merge ( { regex_name => self.refine_del( regex_name, hash ) } ) if regex_name == 'del_regex'
+      name = regex_name.sub('_regex', '')
+      if name == self.class.to_s.downcase.sub(/^.*_/, '')
+        params = [ name, hash ]    
+        refine_hash = refine_hash.merge ( { 'output_hash' => self.send( 'refine_case'.to_sym, *params ) } ) 
+      else
+        refine_hash = refine_hash.merge ( { name => self.refine_case( name, hash ) } ) 
+      end
     end
     refine_hash
+  end
+  
+  def output
+    refine_hash = self.refine
+    output_hash = refine_hash['output_hash']
+    check_results = run_checks( refine_hash )   
+    #output
+    self.output_per_file( output_hash )
+    self.output_summary( output_hash )
+    output_hash
+  end
+  
+  def refine_case( name, hash )
+    case name
+    when 'var'     
+          var_arr = []
+          var_hash = {}
+          hash.each do |file_name, value_arr|
+            value_arr.each do |arr|
+              var_arr << arr[0]
+            end
+            var_hash = var_hash.merge( { file_name => var_arr.uniq.sort } )
+          end
+          return_hash = var_hash
+    when 'del'
+          del_arr = []
+          del_hash = {}
+          hash.each do |file_name, value_arr|
+            value_arr.each do |arr|
+              del_arr << arr[0]
+            end
+            del_hash = del_hash.merge( { file_name => del_arr.uniq.sort } )
+          end
+          return_hash = del_hash
     
-    self.output_per_file( var )
-    self.output_summary( var )
-    
-  end
-  
-  def refine_var( regex_name, hash )
-    var_arr = []
-    var_hash = {}
-    hash.each do |file_name, value_arr|
-      value_arr.each do |arr|
-        var_arr << arr[0]
-      end
-      var_hash = var_hash.merge( { file_name => var_arr.uniq.sort } )
+    # else
     end
-   var_hash
+    return_hash
+  end 
+  
+  
+  
+  def run_checks( refine_hash )
+    var = refine_hash['var']
   end
-  
-  
-  
-  # 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/, 
-  # 'del_regex' => / (d[~a-z}]{1}[~a-z0-9]{1})( |$)/  
-  
-  def refine_del( regex_name, hash )
-    del_arr = []
-    del_hash = {}
-    hash.each do |file_name, value_arr|
-      value_arr.each do |arr|
-        del_arr << arr[0]
-      end
-      del_hash = del_hash.merge( { file_name => del_arr.uniq.sort } )
-    end
-   del_hash
-  end
-  
-  
   
   def is_deleted? ( variable )
     del_regex = / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/
@@ -440,33 +456,33 @@ class Show_var < Show_whatever
     result_hash
   end 
   
-  def output
-    puts '' #for readability
-    puts '~~ Variables per file'
-    puts ''
-    self.result_hash['found'].each do |file, values|
-      puts file.to_s 
-      puts values.uniq.sort.join(', ')                     
-      puts 'Total: ' + values.uniq.count.to_s
-      puts ''
-    end
-    puts ''
-    puts '~~ Summary'    
-    puts ''
-    puts self.result_hash['found'].values.flatten.uniq.join(', ')
-    puts 'Total: ' + self.result_hash['found'].values.flatten.uniq.count.to_s
-    puts 'Total occurences: ' + self.result_hash['total_occurences_count']
-    #free variables
-    puts 'Free variables left: ' + self.result_hash['free_count'].to_s
-    puts ''  #for readability
-    puts ''  #for readability
-    puts '~~ Warnings'
-    puts ''  #for readability
-    #specific warnings
-    self.output_specific_warnings
-    # #general warnings  
-    # self.output_general_warnings
-  end
+  # def output
+    # puts '' #for readability
+    # puts '~~ Variables per file'
+    # puts ''
+    # self.result_hash['found'].each do |file, values|
+      # puts file.to_s 
+      # puts values.uniq.sort.join(', ')                     
+      # puts 'Total: ' + values.uniq.count.to_s
+      # puts ''
+    # end
+    # puts ''
+    # puts '~~ Summary'    
+    # puts ''
+    # puts self.result_hash['found'].values.flatten.uniq.join(', ')
+    # puts 'Total: ' + self.result_hash['found'].values.flatten.uniq.count.to_s
+    # puts 'Total occurences: ' + self.result_hash['total_occurences_count']
+    # # free variables
+    # puts 'Free variables left: ' + self.result_hash['free_count'].to_s
+    # puts ''  #for readability
+    # puts ''  #for readability
+    # puts '~~ Warnings'
+    # puts ''  #for readability
+    # # specific warnings
+    # self.output_specific_warnings
+    # general warnings  
+    # # self.output_general_warnings
+  # end
   
   def get_specific_warnings
     specific_warnings = if self.result_hash['warning_not_deleted'].count == 1
@@ -956,6 +972,7 @@ a = Show_var.new
  result = a.result_hash
 
 a.refine
+a.output
 
 
 
