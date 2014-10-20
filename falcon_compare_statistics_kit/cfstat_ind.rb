@@ -1,5 +1,11 @@
-#v.0.2.3
-#This version does not yet include comparison of indicators. 
+#v.0.3
+#Includes comparison of indicators if called with parameters
+#Parameters
+# -i      includes comparison of indicators
+# -marc   suppresses "indicator" positions of MARC21 fields that do not have indicators
+#Default for saved file: -i true, -marc true 
+#Change below to being saved with same parameters as called
+#Saves file to tab-separated csv
 #Requires Ruby 1.9.3 or higher
 
 require 'time'
@@ -26,14 +32,14 @@ class Compare_file_chooser
     puts 'Which file is the base for comparison (old file)?'
     self.choice_suggester
     base_file = STDIN.gets.chomp
-    if /[^0-9]/.match(base_file) || base_file.to_i >= self.files.count
+    if /[^0-9]/.match(base_file) || base_file.to_i >= self.files.count || base_file == ''
       abort ('No valid index number.')
     end 
     #TODO: More than one file as basis for comparison?
     puts 'Which file is new?'
     self.choice_suggester
     compare_file = STDIN.gets.chomp
-    if /[^0-9]/.match(compare_file) || compare_file.to_i >= self.files.count
+    if /[^0-9]/.match(compare_file) || compare_file.to_i >= self.files.count || compare_file == ''
       abort ('No valid index number.')
     end 
     chosen_files = {  'base_file' => base_file, 'compare_file' => compare_file }
@@ -337,7 +343,7 @@ class Compare
     }
   end  #method end
   
-  def output( include_indicators = true )    
+  def output( include_indicators = true, marc = true )    
     result = self.do
     base_file = Stat_file_reader.new.file_list_to_objects[ self.choice['base_file'].to_i ].path_and_file
     compare_file = Stat_file_reader.new.file_list_to_objects[ self.choice['compare_file'].to_i ].path_and_file
@@ -352,6 +358,20 @@ class Compare
         result_without_indicators = result_without_indicators.merge( { key => new_arr } )
       end
       result = result_without_indicators
+    end
+    #MARC?
+    if marc
+      result_marc = {}
+      result.each do |key, values_arr|
+        new_arr = []
+        values_arr.each do |element|
+          unless element =~ /ind/ && element =~ /00[0135678]{1}/ 
+            new_arr <<  element 
+          end
+        end
+        result_marc = result_marc.merge( { key => new_arr } )
+      end
+      result = result_marc
     end
     # output to screen
     #header
@@ -456,19 +476,19 @@ class Compare
     self
   end
   
-  def save_to_file
+  def save_to_file( include_indicators = true, marc = true )    
     stdout = $stdout
     base_file = Stat_file_reader.new.file_list_to_objects[ self.choice['base_file'].to_i ].path_and_file
     compare_file = Stat_file_reader.new.file_list_to_objects[ self.choice['compare_file'].to_i ].path_and_file
     base_file_short = base_file.sub(/^.*\$(.+)\/.*/, '\1')
     compare_file_short = compare_file.sub(/^.*\$(.+)\/.*/, '\1')
-    # timestamp = Time.now.to_s[0..16].sub(':', 'h') #timestamp caused problems with file name #
-    filename = 'cfstat_' + '_' + base_file_short + '_' + compare_file_short + '.csv'
+    timestamp = Time.now.to_s[0..16].sub(':', 'h').chop 
+    filename = 'cfstat_' + '_' + base_file_short + '_' + compare_file_short + '_' + timestamp + '.csv'
     if File.exists? filename
       puts 'File exists. Rename file and run again.'
     else
       $stdout = File.new(filename, 'w')
-      self.to_s
+      self.output( include_indicators, marc ) 
       $stdout = stdout
       puts "File written."
     end
@@ -476,12 +496,14 @@ class Compare
 
 end #class end
 
-# p Tag_reader.new(File_name_and_contents.new('$leighton_main_corrections_flc/StatLong')).read_tags
+
 
 #main
 include_indicators = ARGV.include?( '-i' ) 
+marc = ARGV.include?( '-marc' ) 
 system 'cls' 
-Compare.new.output( include_indicators ).save_to_file
+Compare.new.output( include_indicators, marc ).save_to_file #save file with default parameters
+# Compare.new.output( include_indicators, marc ).save_to_file( include_indicators, marc ) #save file with same parameters as screen output
 puts ''
 puts ''
 puts '>>Exit script pressing Enter'

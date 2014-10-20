@@ -215,7 +215,7 @@ class Search_instructions_repository
                                 )
                                      
     @var = Search_instruction.new(
-                                    { 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/, 
+                                    { 'var_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/, 
                                       'del_regex' => / (d[~a-z}]{1}[~a-z0-9]{1})( |$)/  #,
                                       # 'del_regex' => / (d[~#{variable[0]}]{1}[~#{variable[1]}]{1})( |$)/  
                                     } 
@@ -267,9 +267,6 @@ class Show_whatever
     general_warnings << self.search_arr_object.file_chooser.hints_hash.values[0]
     general_warnings
   end
-   
-  # def output( hash )                                  #is this really useful?
-  # end
   
   def find
     search_instructions_repository = self.search_instructions_repository
@@ -281,8 +278,7 @@ class Show_whatever
           name = name.to_s.sub('@', '')
           #if match successful
           if line && !line.scan( search_instructions_repository.send( repo ).send( name ) ).empty? 
-            #make sure hash exists
-            
+            #make sure hash exists            
             unless found_hash[repo]
               found_hash = found_hash.merge( { repo => { name => { path_and_file => Array.new } } } )
             end
@@ -324,6 +320,30 @@ class Show_whatever
     end
   end
   
+  def output_per_file( hash, header = '### Result per file: ', message = '' )     
+    puts ''
+    puts header
+    puts ''
+    hash.each do |filename, elements|
+      puts message + filename
+      puts elements.join(', ')
+      puts 'Total: ' + elements.count.to_s
+      puts ''
+    end
+  end
+  
+  def output_summary( hash, header = '>>> Summary (all files): ' )      
+    puts header
+    all_elements = []
+    hash.each do |filename, elements|
+      all_elements << elements      
+    end  
+    all_elements = all_elements.flatten.uniq.sort
+    puts all_elements.join(', ')
+    puts 'Total: ' + all_elements.count.to_s
+    puts ''
+  end
+  
   # def clean_search_instruction_names  #not in use but works
     # cleaned = []
     # self.search_instructions_repository.each do |name|
@@ -339,19 +359,47 @@ end #class end
 class Show_var < Show_whatever
 
   def refine
+    refine_hash = {}
+    output_hash = {}
     self.iterate_applicable_result do |regex_name, hash|
-      self.refine_var(hash) if regex_name == 'del_regex'
-      self.refine_del(hash) if regex_name == 'variable_regex'       
+    output_hash = self.refine_var( regex_name, hash ) if regex_name == ( self.class.to_s.downcase.sub(/^.*_/, '') + '_regex' )
+      refine_hash = refine_hash.merge ( { regex_name => self.refine_var( regex_name, hash ) } ) if regex_name == 'var_regex' 
+      refine_hash = refine_hash.merge ( { regex_name => self.refine_del( regex_name, hash ) } ) if regex_name == 'del_regex'
     end
-    #return value??
+    refine_hash
+    
+    self.output_per_file( var )
+    self.output_summary( var )
+    
   end
   
-  def refine_var(hash)
-
+  def refine_var( regex_name, hash )
+    var_arr = []
+    var_hash = {}
+    hash.each do |file_name, value_arr|
+      value_arr.each do |arr|
+        var_arr << arr[0]
+      end
+      var_hash = var_hash.merge( { file_name => var_arr.uniq.sort } )
+    end
+   var_hash
   end
   
-  def refine_del(hash)
-
+  
+  
+  # 'variable_regex' => / [aA=]{1}([a-z]{1}[a-z0-9]{1})(  | $|$)/, 
+  # 'del_regex' => / (d[~a-z}]{1}[~a-z0-9]{1})( |$)/  
+  
+  def refine_del( regex_name, hash )
+    del_arr = []
+    del_hash = {}
+    hash.each do |file_name, value_arr|
+      value_arr.each do |arr|
+        del_arr << arr[0]
+      end
+      del_hash = del_hash.merge( { file_name => del_arr.uniq.sort } )
+    end
+   del_hash
   end
   
   
@@ -905,7 +953,7 @@ end  # class end
 
 
 a = Show_var.new
-b = a.result_hash
+ result = a.result_hash
 
 a.refine
 
