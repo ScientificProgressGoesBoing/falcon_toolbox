@@ -41,6 +41,8 @@
   #@result_hash
 
   ## methods
+  # search_arr_generator
+  # search_instructions_repository_generator
   # collect_general_warnings
   # delete_comments( line )
   # find                                  
@@ -239,7 +241,7 @@ class Search_instructions_repository
 
   #readers are set dynamically in initalize
 
- # def initialize
+  # def initialize
     # Show_whatever.subclasses.each do |subclass|
       # instance_variable_set("@#{subclass.to_s.downcase}", subclass.new.search_instruction)
       # self.class.send(:attr_reader, subclass.to_s.downcase)
@@ -247,45 +249,50 @@ class Search_instructions_repository
   # end
  
   def initialize
-    @sr = Search_instruction.new( 
-                                  { 
-                                    'jump_in_sr_regex' => /[^ ]{1} >([a-z]{1})( | $|$)/ ,   
-                                    'sr_start_regex' => /^#\(([a-z]{1})( | $|$)/ ,
-                                    'end_sr_regex' => /^#\)([a-z]{1})( | $|$)/ ,
-                                    'conversion_end_regex' => /^(#\+#)( | $|$)/ 
-                                  } 
-                                )
+    @sr = search_instruction_generator( 
+                                        { 
+                                          'jump_in_sr_regex' => /[^ ]{1} >([a-z]{1})( | $|$)/ ,   
+                                          'sr_start_regex' => /^#\(([a-z]{1})( | $|$)/ ,
+                                          'end_sr_regex' => /^#\)([a-z]{1})( | $|$)/ ,
+                                          'conversion_end_regex' => /^(#\+#)( | $|$)/ 
+                                        } 
+                                      )
      
-    @jl = Search_instruction.new( 
-                                  { 
-                                    'jl_regex' => /( |^#)\+([#]?[^+ #-]+)([^#]+|$)/ ,
-                                    'target_regex' => /^(#-[^+ #]+)($| )|^(#[^+ #]+)($| )/ 
-                                  } 
-                                )
-                                     
-    @var = Search_instruction.new(
-                                    { 
-                                      'var_regex' => / ([aA=]{1})([a-z]{1}[a-z0-9]{1})(  | $|$)/, 
-                                      'del_regex' => / (d[~a-z}]{1}[~a-z0-9]{1})( |$)/                                      
-                                    } 
-                                  )
+    @jl = search_instruction_generator( 
+                                        { 
+                                          'jl_regex' => /( |^#)\+([#]?[^+ #-]+)([^#]+|$)/ ,
+                                          'target_regex' => /^(#-[^+ #]+)($| )|^(#[^+ #]+)($| )/ 
+                                        } 
+                                      )
+                                           
+    @var = search_instruction_generator(
+                                          { 
+                                            'var_regex' => / ([aA=]{1})([a-z]{1}[a-z0-9]{1})(  | $|$)/, 
+                                            'del_regex' => / (d[~a-z}]{1}[~a-z0-9]{1})( |$)/                                      
+                                          } 
+                                        )
     
-    @tr = Search_instruction.new(
-                                      {
-                                        'tr_regex' => /^(#\?)/
-                                      }    
-                                    )
+    @tr = search_instruction_generator(
+                                        {
+                                          'tr_regex' => /^(#\?)/
+                                        }    
+                                      )
     #set readers dynamically
     instance_variables.each do |iv|
       name = iv.to_s.sub('@', '')
       self.class.send(:attr_reader, name)
-    end     
+    end 
+    
   end
 
-   def each(&block)
+  def each(&block)
     self.instance_variables.each do |instance_variable|
       block.call instance_variable
     end
+  end
+  
+  def search_instruction_generator( hash )
+    Search_instruction.new( hash )
   end
   
 end
@@ -296,11 +303,19 @@ class Show_whatever
   attr_reader :search_arr, :search_arr_object, :result_hash, :search_instructions_repository
   
   def initialize
-    @search_arr_object = Search_arr.new
+    @search_arr_object = search_arr_generator
     @search_arr = self.search_arr_object.file_and_all_apf_names_and_contents_arr
-    @search_instructions_repository = Search_instructions_repository.new
+    @search_instructions_repository = search_instructions_repository_generator
     @result_hash = self.find
   end 
+  
+  def search_instructions_repository_generator
+    Search_instructions_repository.new
+  end
+  
+  def search_arr_generator
+    Search_arr.new
+  end
   
   def delete_comments( line )
     line = line.sub(/\/\/.*$|  .*$/, '') || line
@@ -384,17 +399,13 @@ class Show_whatever
   end
   
   def output_general_warnings
-    self.search_arr_object.hints_hash.each do |key, files|
-      files.each do |file|
-      puts 'Warning! File is linked to but does not exist: ' + file
-      end
-    end
-    puts ''
-    puts self.search_arr_object.file_chooser.hints_hash.values[0]
+    general_warnings = collect_general_warnings
+    general_warnings.each { |warning| puts warning  }
   end
   
   def collect_general_warnings
-    general_warnings = Show_tr.new.get_specific_warnings
+    general_warnings = []
+    general_warnings = Show_tr.new.get_specific_warnings unless self.class.to_s == 'Show_tr'
     self.search_arr_object.hints_hash.each do |key, files|
       files.each do |file|
         general_warnings << ( 'Warning! File is linked to but does not exist: ' + file )
@@ -844,7 +855,8 @@ class Get_all_warnings
                   'var'     => Show_var.new.get_specific_warnings,
                   'sr'      => Show_sr.new.get_specific_warnings,
                   'jl'      => Show_jl.new.get_specific_warnings,
-                  'info'    => Show_whatever.new.collect_general_warnings     #includes tracer warnings
+                  # 'tr'      => Show_tr.new.get_specific_warnings,
+                  'info'    => Show_whatever.new.collect_general_warnings  #includes tracer warnings
                 }
   end
  
@@ -910,7 +922,7 @@ class Help
     invalid_arguments
   end
   
-  def output_validity
+  def output_validity_check
     if self.invalid_arguments.count > 0 
       warning = if invalid_arguments.count > 1
                 ' aren\'t valid options'
@@ -924,41 +936,51 @@ class Help
   
 end  # class end
 
+
+class Object_provider
+
+  def initialize( class_name )
+  
+  
+    #set readers dynamically
+    instance_variables.each do |iv|
+      name = iv.to_s.sub('@', '')
+      self.class.send(:attr_reader, name)
+    end 
+  end
+  
+  %w(-var -sr -jl -tr).each do |element|
+  
+  end
+  
+  
+
+end
+
       
       
-      
-# # main
+# main
 # system 'cls'
 separator = "\n#####>\n"
 separator_required = ( ( ARGV - ['-w'] ).count > 1 )
 help = Help.new
 
 if ARGV.count > 0
-  help.output_validity
+  help.output_validity_check
 else
   puts 'What do you want to do?'
   help.list_options
 end
 
-if ARGV.include?( '-var' )
-  print separator if separator_required
-  Show_var.new.output
-end
+parameters = %w(-var -sr -jl -tr)
 
-if ARGV.include?( '-sr' )
-  print separator if separator_required
-  Show_sr.new.output
-end
-
-if ARGV.include?( '-jl' )
-  print separator if separator_required
-  Show_jl.new.output
-end
-
-#but: tracer warnings always included in general warnings
-if ARGV.include?( '-tr' )
-  print separator if separator_required
-  Show_tr.new.output
+ARGV.each do |argument|
+  if parameters.include? argument
+    print separator if separator_required
+    name = argument.to_s.sub('-', 'Show_')
+    object = eval( "#{name}.new" )
+    object.send( 'output' )  
+  end
 end
 
 if ARGV.include?( '-w' )
@@ -967,8 +989,6 @@ if ARGV.include?( '-w' )
   keys.push( 'info' )
   Get_all_warnings.new.output_except( *keys )
 end
-
-# Get_all_warnings.new.output( 'info' ) #redundant
 
 puts ''
 
