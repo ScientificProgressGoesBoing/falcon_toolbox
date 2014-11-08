@@ -379,6 +379,7 @@ class Show_whatever
       puts 'Total: ' + elements.count.to_s
       puts ''
     end
+    hash.count
   end
   
   def output_summary( hash, header = '>>> Summary (all files): ' )      
@@ -413,8 +414,8 @@ class Show_whatever
   end
   
   def output
-    output_per_file( output_hash = self.refine['output'] )
-    output_summary( output_hash = self.refine['output'] )
+    count = output_per_file( output_hash = self.refine['output'] )
+    output_summary( output_hash = self.refine['output'] ) if count > 1
     output_specific_warnings
     output_general_warnings
   end
