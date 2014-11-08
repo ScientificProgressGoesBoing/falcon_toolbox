@@ -77,21 +77,29 @@ class File_chooser
   def file_list_generator
     path = @path
     file_list = []
-    Dir["#{path}/*.fcv"].each do |file|
-     file_list << file.to_s
+    
+    file_types = %w(fcv tmpl ipa apf)    
+    file_types.each do |type|
+      Dir["#{path}/*.#{type}"].each do |file|
+        file_list << file.to_s
+      end
     end
+    
+    # Dir["#{path}/*.fcv"].each do |file|
+     # file_list << file.to_s
+    # end
 
-    Dir["#{path}/*.tmpl"].each do |file|
-      file_list << file.to_s
-    end
+    # Dir["#{path}/*.tmpl"].each do |file|
+      # file_list << file.to_s
+    # end
     
-    Dir["#{path}/*.ipa"].each do |file|
-      file_list << file.to_s
-    end
+    # Dir["#{path}/*.ipa"].each do |file|
+      # file_list << file.to_s
+    # end
     
-    Dir["#{path}/*.apf"].each do |file|
-      file_list << file.to_s
-    end
+    # Dir["#{path}/*.apf"].each do |file|
+      # file_list << file.to_s
+    # end
     
     file_list
   end
@@ -118,13 +126,14 @@ class File_chooser
     unless File.exists? 'Cookie.txt'
       file_list = file_choice_suggester
       puts 'Choose file by typing index number!'
-      chosen_file = gets.chomp
+      chosen_file = STDIN.gets.chomp
       if /[^0-9]/.match(chosen_file) || chosen_file.to_i >= file_list.count
         abort ('No valid index number.')
       else 
         chosen_file = chosen_file.to_i
       end
       cookie_writer(  file_list[chosen_file].to_s )
+      system 'cls'
       puts 'You chose file: ' + file_list[chosen_file].to_s
       path_and_file = file_list[chosen_file].to_s
     else
