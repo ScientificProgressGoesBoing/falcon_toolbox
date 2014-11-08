@@ -85,22 +85,6 @@ class File_chooser
       end
     end
     
-    # Dir["#{path}/*.fcv"].each do |file|
-     # file_list << file.to_s
-    # end
-
-    # Dir["#{path}/*.tmpl"].each do |file|
-      # file_list << file.to_s
-    # end
-    
-    # Dir["#{path}/*.ipa"].each do |file|
-      # file_list << file.to_s
-    # end
-    
-    # Dir["#{path}/*.apf"].each do |file|
-      # file_list << file.to_s
-    # end
-    
     file_list
   end
   
