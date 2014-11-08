@@ -238,7 +238,7 @@ end
 
 class Search_instructions_repository
 
-  #readers are set dynamically in initalize
+  #readers are set dynamically in initialize
 
   # def initialize
     # Show_whatever.subclasses.each do |subclass|
