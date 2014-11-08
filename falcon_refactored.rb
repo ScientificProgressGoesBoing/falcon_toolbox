@@ -628,7 +628,7 @@ class Show_sr < Show_whatever
         end
       end
       collect_warnings.each do |file_name, arr|
-      specific_warnings_arr << ( 'Warning! Subroutine not defined in main file: ' + arr.join(', ') + ' in file ' + file_name + '.' )
+      specific_warnings_arr << ( 'Warning! Subroutine not defined in main file: ' + arr.join(', ') + ' in ' + file_name + '.' )
       end
     end
     #jumped in but does not exist 
