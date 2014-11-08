@@ -69,7 +69,12 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 PATH = 'param'
-PARAMETERS = %w(-var -sr -jl -tr)   #register new options HERE!!!
+PARAMETERS = {  #register new options HERE!!!
+                '-var' => 'list Variables',
+                '-sr'  => 'list Subroutines',
+                '-jl'  => 'list Jump Lables',
+                '-tr'  => 'list trailing tracers'
+             }              
 
 class File_chooser
 
@@ -894,13 +899,13 @@ class Help
     @invalid_arguments = self.check_validity
   end
   
+  PARAMETERS = Object::PARAMETERS.merge( '-w' => 'get all warnings' )
+  
   def list_options
     puts 'Available options: '
-    puts '-var' + "\t" + 'list Variables'
-    puts '-sr'  + "\t" + 'list Subroutines'
-    puts '-jl'  + "\t" + 'list Jump Lables'
-    puts '-tr'  + "\t" + 'list trailing tracers'
-    puts '-w'   + "\t" + 'get all warnings'
+    PARAMETERS.each do |key, value|
+      puts key + "\t" + value
+    end
     puts ''
     puts 'Example: ruby falcon.rb -jl -w'
     puts '(combination of options is possible)'    
@@ -909,7 +914,7 @@ class Help
   def check_validity
     invalid_arguments = []
     valid_arguments = []
-    parameters = Object::PARAMETERS + %w(-w)
+    parameters = PARAMETERS.keys
     ARGV.each do |argument|
       unless parameters.include? argument
         invalid_arguments << argument
@@ -950,7 +955,7 @@ else
 end
 
 ARGV.each do |argument|
-  if PARAMETERS.include? argument
+  if PARAMETERS.keys.include? argument
     print separator if separator_required
     name = argument.to_s.sub('-', 'Show_')
     object = instance_eval( "#{name}.new" )
