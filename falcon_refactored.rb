@@ -69,7 +69,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 PATH = 'param'
-PARAMETERS = {  #register new options HERE!!!
+PARAMETERS = {                                        #register new options HERE!!!
                 '-var' => 'list Variables',
                 '-sr'  => 'list Subroutines',
                 '-jl'  => 'list Jump Lables',
