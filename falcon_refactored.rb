@@ -1,4 +1,4 @@
-#This ruby script shows a deduplicated list of all falcon FEL variables currently in use
+#This ruby script performs several falcon FEL syntax checks
 #Adjust path 'param' as needed
 #To be used with .fcv, .ipa and .tmpl files
 
@@ -12,7 +12,6 @@
 #-jl    list jump labels
 #-tr    list trailing tracers
 
-#path = 'param'
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #TODO: count "=" as deleting a variable
