@@ -936,27 +936,6 @@ class Help
   
 end  # class end
 
-
-class Object_provider
-
-  def initialize( class_name )
-  
-  
-    #set readers dynamically
-    instance_variables.each do |iv|
-      name = iv.to_s.sub('@', '')
-      self.class.send(:attr_reader, name)
-    end 
-  end
-  
-  %w(-var -sr -jl -tr).each do |element|
-  
-  end
-  
-  
-
-end
-
       
       
 # main
@@ -978,7 +957,7 @@ ARGV.each do |argument|
   if parameters.include? argument
     print separator if separator_required
     name = argument.to_s.sub('-', 'Show_')
-    object = eval( "#{name}.new" )
+    object = instance_eval( "#{name}.new" )
     object.send( 'output' )  
   end
 end
