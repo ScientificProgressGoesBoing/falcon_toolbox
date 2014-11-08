@@ -17,7 +17,7 @@
 #TODO: count "=" as deleting a variable
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  ##~~Documentation~~##
+  ##~~DOCUMENTATION~~##
   
   ##Classes##
   #File_chooser
@@ -28,6 +28,10 @@
   #Show_whatever #and inheriting classes: Show_var, Show_sr, Show_jl, Show_tr
   #Get_all_warnings
   #Help
+  
+  ##Constants##
+  #Object::PATH
+  #Object::PARAMETERS
 
   #~~~
   
@@ -64,27 +68,27 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+PATH = 'param'
+PARAMETERS = %w(-var -sr -jl -tr)   #register new options HERE!!!
 
 class File_chooser
 
   attr_accessor :hints_hash
   
   def initialize
-    @path = 'param'
+    @path = Object::PATH
     @hints_hash = {}
   end
 
   def file_list_generator
     path = @path
-    file_list = []
-    
+    file_list = []    
     file_types = %w(fcv tmpl ipa apf)    
     file_types.each do |type|
       Dir["#{path}/*.#{type}"].each do |file|
         file_list << file.to_s
       end
-    end
-    
+    end    
     file_list
   end
   
@@ -95,7 +99,7 @@ class File_chooser
         puts index.to_s + ' ' + file
       end
     else 
-      puts 'Neither .fcv nor .tmpl nor .ipa files in directory.'  
+      puts 'Neither .fcv nor .tmpl nor .ipa nor .apf files in directory.'  
     end
     file_list
   end
@@ -905,7 +909,7 @@ class Help
     invalid_arguments = []
     valid_arguments = []
     ARGV.each do |argument|
-      unless ['-var', '-sr', '-jl', '-tr', '-w'].include? argument           #register new options HERE!!!
+      unless Object::PARAMETERS.include? argument
         invalid_arguments << argument
       else
         valid_arguments << argument
@@ -921,8 +925,8 @@ class Help
                 elsif invalid_arguments.count == 1
                 ' is not a valid option'
                 end  
-      puts invalid_arguments.join(' and ') + warning
-      Help.new
+      puts invalid_arguments.join(' and ') + warning +"\n\n"
+      Help.new.list_options
     end 
   end
   
@@ -943,10 +947,8 @@ else
   help.list_options
 end
 
-parameters = %w(-var -sr -jl -tr)
-
 ARGV.each do |argument|
-  if parameters.include? argument
+  if PARAMETERS.include? argument
     print separator if separator_required
     name = argument.to_s.sub('-', 'Show_')
     object = instance_eval( "#{name}.new" )
