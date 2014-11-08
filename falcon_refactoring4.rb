@@ -10,11 +10,58 @@
 #-var   list variables
 #-sr    list subroutines
 #-jl    list jump labels
+#-tr    list trailing tracers
 
-path = 'param'
+#path = 'param'
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #TODO: count "=" as deleting a variable
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ##~~Documentation~~##
+  
+  ##Classes##
+  #File_chooser
+  #File_name_and_contents
+  #Search_arr
+  #Search_instruction
+  #Search_instructions_repository
+  #Show_whatever #and inheriting classes: Show_var, Show_sr, Show_jl, Show_tr
+  #Get_all_warnings
+  #Help
+
+  #~~~
+  
+  ## Show_whatever 
+
+  ## instance variables + attr_reader 
+  #@search_arr_object
+  #@search_arr
+  #@search_instructions_repository
+  #@result_hash
+
+  ## methods
+  # collect_general_warnings
+  # delete_comments( line )
+  # find                                  
+  # get_applicable_result
+  # iterate( &block )   
+  # iterate_applicable_result( &block )
+  # output_per_file( hash, header )     
+  # output_summary( hash, header )      
+  # output_general_warnings
+  # output
+  # refine
+  # get_specific_warnings
+  # def clean_search_instruction_names  #not in use but works
+
+  ## methods *required* in inheriting classes
+  # run_checks( refine_hash ) 
+  # output_specific_warnings
+  ##optional
+  # output_specific( number )
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 class File_chooser
@@ -190,7 +237,7 @@ end
 
 class Search_instructions_repository
 
-  attr_reader :sr, :jl, :var, :tracer
+  #readers are set dynamically in initalize
 
  # def initialize
     # Show_whatever.subclasses.each do |subclass|
@@ -223,11 +270,16 @@ class Search_instructions_repository
                                     } 
                                   )
     
-    @tracer = Search_instruction.new(
+    @tr = Search_instruction.new(
                                       {
-                                        'tracer_regex' => /^(#\?)/
+                                        'tr_regex' => /^(#\?)/
                                       }    
                                     )
+    #set readers dynamically
+    instance_variables.each do |iv|
+      name = iv.to_s.sub('@', '')
+      self.class.send(:attr_reader, name)
+    end     
   end
 
    def each(&block)
@@ -342,7 +394,7 @@ class Show_whatever
   end
   
   def collect_general_warnings
-    general_warnings = Show_tracer.new.get_specific_warnings
+    general_warnings = Show_tr.new.get_specific_warnings
     self.search_arr_object.hints_hash.each do |key, files|
       files.each do |file|
         general_warnings << ( 'Warning! File is linked to but does not exist: ' + file )
@@ -378,12 +430,8 @@ class Show_whatever
     run_checks( self.refine )
   end  
   
-  # run_checks( self.refine ) 
-  # Needs to be implemented in each class. (Not here!)
-
-  
   def output_specific_warnings
-    # Needs to be implemented in each class.
+    # Needs to be implemented in each class. #Dummy needed here.
   end
   
   # def clean_search_instruction_names  #not in use but works
@@ -740,32 +788,42 @@ class Show_jl < Show_whatever
 end #class end
 
 
-class Show_tracer < Show_whatever
+class Show_tr < Show_whatever
 
   def refine_case( name, hash )
     case name
-      when 'tracer'
+      when 'tr'
+        tracer_hash = {}
+        hash.each do |file_name, tracer_arr|
+          tracer_hash = tracer_hash.merge(  file_name => tracer_arr.flatten  )
+        end
+        return_hash = tracer_hash
     end
-    return_hash = []
+    return_hash
   end
   
-  # def run_checks
-  # end
-
-  def get_specific_warnings
+  def run_checks( refine_hash )
+    self.check_which_line
+  end 
+  
+  def check_which_line
     tracer_warnings = []
-    tracer_regex = /^#\?/
-    self.search_arr.each do |object|  
-        file = object.path_and_file
-        object.contents.each_with_index do |line, index|
-          unless line.scan( tracer_regex ).flatten.empty?
-            tracer_warnings << ( 'Warning! Tracer left in "' + file + '" at line ' + ( index + 1 ).to_s )
+    tracer_regex = self.search_instructions_repository.tr.tr_regex
+    self.refine['output'].keys.each do |file_name| 
+        self.search_arr.each do |object|  
+          if object.path_and_file == file_name
+            object.contents.each_with_index do |line, index|
+              unless line.scan( tracer_regex ).flatten.empty?
+                tracer_warnings << ( 'Warning! Tracer left in "' + file_name + '" at line ' + ( index + 1 ).to_s )
+              end
+            end
           end
         end
     end 
     tracer_warnings    
-  end      
-
+  end 
+  
+  #redundant as tracer warnings are included in general warnings
   def output_specific_warnings
     tracer_warnings = self.get_specific_warnings
     unless tracer_warnings.count == 0
@@ -821,37 +879,29 @@ end
 
 class Help
 
+  attr_reader :invalid_arguments
+
   def initialize
-    self.list_options
+    @invalid_arguments = self.check_validity
   end
   
   def list_options
     puts 'Available options: '
-    puts '-var' + "\t" + 'to list Variables'
-    puts '-sr' + "\t" + 'to list Subroutines'
-    puts '-jl' + "\t" + 'to list Jump Lables'
-    puts '-w'  + "\t" + 'to get all warnings'
+    puts '-var' + "\t" + 'list Variables'
+    puts '-sr'  + "\t" + 'list Subroutines'
+    puts '-jl'  + "\t" + 'list Jump Lables'
+    puts '-tr'  + "\t" + 'list trailing tracers'
+    puts '-w'   + "\t" + 'get all warnings'
     puts ''
     puts 'Example: ruby falcon.rb -jl -w'
     puts '(combination of options is possible)'    
-  end
-  
-end
-
-
-class Validity_checker
-
-  attr_reader :invalid_arguments
-  
-  def initialize
-    @invalid_arguments = self.check_validity
   end
 
   def check_validity
     invalid_arguments = []
     valid_arguments = []
     ARGV.each do |argument|
-      unless ['-var', '-sr', '-jl', '-w'].include? argument           #register new options HERE!!!
+      unless ['-var', '-sr', '-jl', '-tr', '-w'].include? argument           #register new options HERE!!!
         invalid_arguments << argument
       else
         valid_arguments << argument
@@ -860,7 +910,7 @@ class Validity_checker
     invalid_arguments
   end
   
-  def output
+  def output_validity
     if self.invalid_arguments.count > 0 
       warning = if invalid_arguments.count > 1
                 ' aren\'t valid options'
@@ -876,16 +926,18 @@ end  # class end
 
       
       
+      
 # # main
 # system 'cls'
 separator = "\n#####>\n"
 separator_required = ( ( ARGV - ['-w'] ).count > 1 )
+help = Help.new
 
 if ARGV.count > 0
-  Validity_checker.new.output
+  help.output_validity
 else
   puts 'What do you want to do?'
-  Help.new
+  help.list_options
 end
 
 if ARGV.include?( '-var' )
@@ -903,6 +955,12 @@ if ARGV.include?( '-jl' )
   Show_jl.new.output
 end
 
+#but: tracer warnings always included in general warnings
+if ARGV.include?( '-tr' )
+  print separator if separator_required
+  Show_tr.new.output
+end
+
 if ARGV.include?( '-w' )
   options = ARGV - [ '-w' ]
   keys = options.map { |option| option = option.sub(/-/, '') }  
@@ -910,7 +968,7 @@ if ARGV.include?( '-w' )
   Get_all_warnings.new.output_except( *keys )
 end
 
-Get_all_warnings.new.output( 'info' )
+# Get_all_warnings.new.output( 'info' ) #redundant
 
 puts ''
 
