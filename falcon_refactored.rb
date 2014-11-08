@@ -64,7 +64,7 @@
   # run_checks( refine_hash ) 
   # output_specific_warnings
   ##optional
-  # output_specific( number )
+  # output_specific( all_elements )
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -391,7 +391,7 @@ class Show_whatever
     puts ''
   end
   
-  def output_specific( number )
+  def output_specific( all_elements )
     #Needs to be implemented in each class.
   end
   
@@ -909,8 +909,9 @@ class Help
   def check_validity
     invalid_arguments = []
     valid_arguments = []
+    parameters = Object::PARAMETERS + %w(-w)
     ARGV.each do |argument|
-      unless Object::PARAMETERS.include? argument
+      unless parameters.include? argument
         invalid_arguments << argument
       else
         valid_arguments << argument
