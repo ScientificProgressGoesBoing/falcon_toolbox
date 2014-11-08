@@ -939,7 +939,7 @@ end  # class end
       
       
 # main
-# system 'cls'
+system 'cls'
 separator = "\n#####>\n"
 separator_required = ( ( ARGV - ['-w'] ).count > 1 )
 help = Help.new
