@@ -495,6 +495,7 @@ class Show_var < Show_whatever
   def run_checks( refine_hash )
     var_hash = refine_hash['output']
     del_hash = refine_hash['del']    
+    warnings = []
     #all variables deleted?
     not_deleted = []
     var_hash.values.flatten.uniq.each do |variable|
@@ -506,9 +507,8 @@ class Show_var < Show_whatever
       warning = 'Warning! Variables that are never deleted: '
     end
     if not_deleted.count > 0
-      warning += not_deleted.join(', ')
+      warnings << warning += not_deleted.join(', ')
     end
-    [ warning ]
   end
   
   def is_deleted? ( variable, del_hash )
