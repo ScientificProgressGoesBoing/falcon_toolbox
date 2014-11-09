@@ -932,8 +932,13 @@ class Help
                 ' is not a valid option'
                 end  
       puts invalid_arguments.join(' and ') + warning +"\n\n"
-      Help.new.list_options
+      list_options
     end 
+  end
+  
+  def give_helpful_advice
+    puts 'What do you want to do?'
+    list_options
   end
   
 end  # class end
@@ -949,8 +954,7 @@ help = Help.new
 if ARGV.count > 0
   help.output_validity_check
 else
-  puts 'What do you want to do?'
-  help.list_options
+  help.give_helpful_advice
 end
 
 ARGV.each do |argument|
