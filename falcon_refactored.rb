@@ -479,9 +479,9 @@ class Show_var < Show_whatever
         return_hash = var_hash
         #TODO: how get the assign_hash out without disturbing the rest?? 
       when 'del'
-        del_arr = []
         del_hash = {}
         hash.each do |file_name, value_arr|
+          del_arr = []
           value_arr.each do |arr|
             del_arr << arr[0]
           end
@@ -493,29 +493,28 @@ class Show_var < Show_whatever
   end 
     
   def run_checks( refine_hash )
-    var = refine_hash['output']
-    del = refine_hash['del']    
+    var_hash = refine_hash['output']
+    del_hash = refine_hash['del']    
     #all variables deleted?
     not_deleted = []
-    var.each do |variable|
-      not_deleted << variable unless is_deleted?( variable, del ) #|| !assigned_with_equal_sign?( variable, assign_hash )
+    var_hash.values.flatten.uniq.each do |variable|
+      not_deleted << variable unless is_deleted?( variable, del_hash ) #|| !assigned_with_equal_sign?( variable, assign_hash ) 
     end
     if not_deleted.count == 1
       warning = 'Warning! Variable that is never deleted: '
     elsif not_deleted.count > 1
       warning = 'Warning! Variables that are never deleted: '
     end
-    {
-      warning => not_deleted
-    }
+    if not_deleted.count > 0
+      warning += not_deleted.join(', ')
+    end
+    [ warning ]
   end
   
   def is_deleted? ( variable, del_hash )
     del_regex = /(d[~#{variable[0]}]{1}[~#{variable[1]}]{1})/
-    del_hash.each do |file_name, arr|
-      arr.each do |del_variable|
-        return true if del_variable =~ del_regex 
-      end
+    del_hash.values.uniq.flatten.each do |deletion|
+      return true if deletion =~ del_regex 
     end
     return false
   end
@@ -537,11 +536,11 @@ class Show_var < Show_whatever
   def output_specific_warnings
     specific_warnings = self.get_specific_warnings
     unless specific_warnings.empty?
-      specific_warnings.each do |warning, hash| 
-        print warning 
-        hash.each do |file_name, arr|
-          puts arr.join(', ') # + ' (' + file_name + ') '
-        end
+      specific_warnings.each do |warning| 
+        puts warning 
+        # hash.each do |file_name, arr|
+          # puts arr.join(', ') # + ' (' + file_name + ') '
+        # end
       end
     else
       puts 'No warnings related to variables.'
@@ -854,11 +853,11 @@ class Get_all_warnings
   
   def initialize
   @warnings =   {
-                  'var'     => Show_var.new.get_specific_warnings,
+                  'var'     => Show_var.new.get_specific_warnings,  #get hat falschen Format
                   'sr'      => Show_sr.new.get_specific_warnings,
-                  'jl'      => Show_jl.new.get_specific_warnings,
+                  'jl'      => Show_jl.new.get_specific_warnings  #,
                   # 'tr'      => Show_tr.new.get_specific_warnings,
-                  'info'    => Show_whatever.new.collect_general_warnings  #includes tracer warnings
+                  # 'info'    => Show_whatever.new.collect_general_warnings  #includes tracer warnings
                 }
   end
  
@@ -939,10 +938,10 @@ class Help
   
 end  # class end
 
-      
+
       
 # main
-system 'cls'
+# system 'cls'
 separator = "\n#####>\n"
 separator_required = ( ( ARGV - ['-w'] ).count > 1 )
 help = Help.new
@@ -966,12 +965,9 @@ end
 if ARGV.include?( '-w' )
   options = ARGV - [ '-w' ]
   keys = options.map { |option| option = option.sub(/-/, '') }  
-  keys.push( 'info' )
+  # keys.push( 'info' )
+  puts ''
   Get_all_warnings.new.output_except( *keys )
 end
 
 puts ''
-
-
-
-
