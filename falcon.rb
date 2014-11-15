@@ -70,9 +70,9 @@
 
 PATH = 'param'
 PARAMETERS = {                                        #register new options HERE!!!
-                '-var' => 'list Variables',
-                '-sr'  => 'list Subroutines',
-                '-jl'  => 'list Jump Lables',
+                '-var' => 'list variables',
+                '-sr'  => 'list subroutines',
+                '-jl'  => 'list jump labels',
                 '-tr'  => 'list trailing tracers'
              }              
 
@@ -380,17 +380,24 @@ class Show_whatever
     end
   end
   
-  def output_per_file( hash, header = '### Result per file: ', message = '' )     
-    puts ''
-    puts header
-    puts ''
-    hash.each do |filename, elements|
-      puts message + filename
-      puts elements.join(', ')
-      puts 'Total: ' + elements.count.to_s
+  def output_per_file( hash, header = '### Result per file: ', message = '' )  
+    if hash
       puts ''
+      puts header
+      puts ''
+      hash.each do |filename, elements|
+        puts message + filename
+        puts elements.join(', ')
+        puts 'Total: ' + elements.count.to_s
+        puts ''
+      end
+      hash.count
+    else
+      parameter = self.to_s.sub(/.+Show_([^_:]+).+/, '-\1')
+      parameter = Object::PARAMETERS[parameter].sub('list ', '')
+      puts 'No ' + parameter + ' in file.'
+      return 0
     end
-    hash.count
   end
   
   def output_summary( hash, header = '>>> Summary (all files): ' )      
@@ -426,7 +433,9 @@ class Show_whatever
   
   def output
     count = output_per_file( output_hash = self.refine['output'] )
-    output_summary( output_hash = self.refine['output'] ) if count > 1
+    if count
+      output_summary( output_hash = self.refine['output'] ) if count > 1
+    end
     output_specific_warnings
     output_general_warnings
   end
@@ -499,8 +508,8 @@ class Show_var < Show_whatever
   end 
     
   def run_checks( refine_hash )
-    var_hash = refine_hash['output']
-    del_hash = refine_hash['del']    
+    var_hash = refine_hash['output'] || {}
+    del_hash = refine_hash['del'] || {} 
     warnings = []
     #all variables deleted?
     not_deleted = []
@@ -540,7 +549,7 @@ class Show_var < Show_whatever
   #TODO: distinct count vs. summarized count
   
   def output_specific_warnings
-    specific_warnings = self.get_specific_warnings
+    specific_warnings = self.get_specific_warnings || []
     unless specific_warnings.empty?
       specific_warnings.each do |warning| 
         puts warning 
@@ -619,73 +628,91 @@ class Show_sr < Show_whatever
   end  
   
   def run_checks( refine_hash )
-    hash_to_check = refine_hash
-    specific_warnings_arr = []
-    #no conversion end sign
-    if hash_to_check['conversion'].keys[0] =~ /Warning/
-      specific_warnings_arr << hash_to_check['conversion'].keys[0]
-    end
-    #starts not in right file 
-    if hash_to_check['output'].count > 1
-      collect_warnings = {}
-      hash_to_check['output'].each do |file_name, arr|       
-        unless file_name.end_with?( '.tmpl', '.fcv', '.ipa' )
-          collect_warnings = collect_warnings.merge( { file_name => arr } )
-          hash_to_check['output'] = hash_to_check['output'].tap { |h| h.delete( file_name ) }
+    if refine_hash
+      hash_to_check = refine_hash || {}
+      specific_warnings_arr = []
+      #check: no conversion end sign
+      if hash_to_check['conversion']
+        if hash_to_check['conversion'].keys[0] =~ /Warning/
+          specific_warnings_arr << hash_to_check['conversion'].keys[0]
         end
       end
-      collect_warnings.each do |file_name, arr|
-      specific_warnings_arr << ( 'Warning! Subroutine not defined in main file: ' + arr.join(', ') + ' in ' + file_name + '.' )
-      end
-    end
-    #jumped in but does not exist 
-    if hash_to_check['jump'].any?
-      hash_to_check['jump'].each do |file_name, arr|
-        arr.each do |element|
-          unless hash_to_check['output'].values.include? element 
-            specific_warnings_arr << 'Warning! No subroutine ' + element + ' despite >' + element + ' in "' + file_name + '".'   
+      #check: starts not in right file 
+      if hash_to_check['output']
+        if hash_to_check['output'].count > 1
+          collect_warnings = {}
+          hash_to_check['output'].each do |file_name, arr|       
+            unless file_name.end_with?( '.tmpl', '.fcv', '.ipa' )
+              collect_warnings = collect_warnings.merge( { file_name => arr } )
+              hash_to_check['output'] = hash_to_check['output'].tap { |h| h.delete( file_name ) }
+            end
+          end
+          collect_warnings.each do |file_name, arr|
+          specific_warnings_arr << ( 'Warning! Subroutine not defined in main file: ' + arr.join(', ') + ' in ' + file_name + '.' )
           end
         end
       end
-    end
-    if hash_to_check['output'].any?
-      hash_to_check['output'].values.flatten.uniq.each do |element|
-        #not closed  
-        unless hash_to_check['end'].values.flatten.uniq.include? element
-          specific_warnings_arr << 'Warning! Subroutine ' + element + ' is not closed.'
-        end
-        #Info: not used
-        unless hash_to_check['jump'].values.flatten.uniq.include? element
-          specific_warnings_arr << 'Info: Subroutine ' + element + ' is not used.'
-        end
-      end    
-    end
-    #start before conversion_end
-    if hash_to_check['output'].count == 1
-      hash_to_check['output'].each do |file_name, arr|
-        arr.each do |element|
-          File.readlines( file_name ).each_with_index do |line, index|
-            if line.match( /\#\(#{element}/ )
-              line_number = index + 1
-              if line_number <= hash_to_check['conversion'].values[0]
-                specific_warnings_arr << 'Warning! Subroutine ' + element + ' starts before end of conversion.'
+      #check: jumped in but does not exist 
+      if hash_to_check['jump']
+        if hash_to_check['jump'].any?
+          hash_to_check['jump'].each do |file_name, arr|
+            arr.each do |element|
+              unless hash_to_check['output'].values.include? element 
+                specific_warnings_arr << 'Warning! No subroutine ' + element + ' despite >' + element + ' in "' + file_name + '".'   
               end
             end
           end
         end
       end
+      if hash_to_check['output']
+        if hash_to_check['output'].any?
+          hash_to_check['output'].values.flatten.uniq.each do |element|
+            #not closed  
+            unless hash_to_check['end'].values.flatten.uniq.include? element
+              specific_warnings_arr << 'Warning! Subroutine ' + element + ' is not closed.'
+            end
+            #Info: not used
+            unless hash_to_check['jump'].values.flatten.uniq.include? element
+              specific_warnings_arr << 'Info: Subroutine ' + element + ' is not used.'
+            end
+          end    
+        end
+      end
+      #check: start before conversion_end
+      if hash_to_check['output']
+        if hash_to_check['output'].count == 1
+          hash_to_check['output'].each do |file_name, arr|
+            arr.each do |element|
+              File.readlines( file_name ).each_with_index do |line, index|
+                if line.match( /\#\(#{element}/ )
+                  line_number = index + 1
+                  if line_number <= hash_to_check['conversion'].values[0]
+                    specific_warnings_arr << 'Warning! Subroutine ' + element + ' starts before end of conversion.'
+                  end
+                end
+              end
+            end
+          end
+        end
+      specific_warnings_arr.uniq.sort
+      end
+    else
+      []
     end
-    specific_warnings_arr.uniq.sort
   end
   
-  def output_specific( number )
-    #TODO: Needs to be implemented in each class.
+  def output_specific( all_elements )
+    # Optional to be implemented in each class if applicable. 
     []
   end 
   
   def output_specific_warnings
-    unless self.get_specific_warnings.empty? 
-      puts self.get_specific_warnings
+    if self.get_specific_warnings
+      unless self.get_specific_warnings.empty? 
+        puts self.get_specific_warnings
+      else
+        puts 'No warnings related to subroutines.'
+      end
     else
       puts 'No warnings related to subroutines.'
     end
@@ -743,11 +770,9 @@ class Show_jl < Show_whatever
       #run checks
       specific_warnings_arr << check_target_missing( hash_to_check['target'], hash_to_check['output'] )
       specific_warnings_arr << check_target_not_unique( hash_to_check['target'] )
-      #result
-      specific_warnings_arr
-    else
-      []
     end
+    #result
+    specific_warnings_arr || []
   end
   
   def output_specific( all_elements ) 
@@ -795,27 +820,36 @@ class Show_jl < Show_whatever
   end #end method
   
   def check_target_not_unique( sorted_per_type_targets_hash )
-    targets_type_label = sorted_per_type_targets_hash['label']
-    #check
-    warning_target_not_unique = []
-    duplicates = targets_type_label.group_by{ |e| e }.keep_if{ |_, e| e.length > 1 }
-    if duplicates.count > 0
-      warning_target_not_unique = duplicates.sort.map { |arr| [ arr[0], arr[1] = arr[1].count ] }.reject { |element| element if element =~ /^ *$/ } 
-    end
-    #word out warnings
-    duplicate_warnings = []
-    if warning_target_not_unique.any?    
-      warning_target_not_unique.uniq.each do |duplicate, duplicate_count|
-        duplicate_warnings << ( 'Warning! Target not unique: ' + duplicate + ' (' + duplicate_count.to_s + 'x).' )
+    if sorted_per_type_targets_hash
+      targets_type_label = sorted_per_type_targets_hash['label']
+      #check
+      warning_target_not_unique = []
+      duplicates = targets_type_label.group_by{ |e| e }.keep_if{ |_, e| e.length > 1 }
+      if duplicates.count > 0
+        warning_target_not_unique = duplicates.sort.map { |arr| [ arr[0], arr[1] = arr[1].count ] }.reject { |element| element if element =~ /^ *$/ } 
       end
+      #word out warnings
+      duplicate_warnings = []
+      if warning_target_not_unique.any?    
+        warning_target_not_unique.uniq.each do |duplicate, duplicate_count|
+          duplicate_warnings << ( 'Warning! Target not unique: ' + duplicate + ' (' + duplicate_count.to_s + 'x).' )
+        end
+      end
+      duplicate_warnings.uniq.sort
+    else
+      []
     end
-    duplicate_warnings.uniq.sort
   end #end method
     
   def output_specific_warnings
-    if self.get_specific_warnings.any?
-      self.get_specific_warnings.each do |warning|
-        puts warning
+    specific_warnings = self.get_specific_warnings
+    if specific_warnings
+      unless specific_warnings.empty?
+        self.get_specific_warnings.each do |warning|
+          puts warning
+        end
+      else
+        puts 'No warnings related to jump labels.'
       end
     else
       puts 'No warnings related to jump labels.'
@@ -902,13 +936,26 @@ class Get_all_warnings
   end
   
   def output_except( *keys )
-    warnings = self.warnings
-    keys.each do |key|
-      warnings = warnings.tap {|h| h.delete(key)}
-    end
-    warnings.each do |topic, arr|
-      arr.each do |warning|
-        puts warning
+    if keys
+      unless keys.empty?
+        warnings = self.warnings
+        keys.each do |key|
+          warnings = warnings.tap {|h| h.delete(key)}
+        end
+        if warnings
+          # warning_exists = false
+          warnings.each do |topic, arr|
+            if arr
+              # warning_exists = true unless arr.empty?
+              arr.each do |warning|
+                puts warning
+              end
+            end
+          end
+          # puts 'No warnings. Everything\'s fine.' if warning_exists == false
+        end
+      else
+        puts 'No warnings. Everything\'s fine.'
       end
     end
   end
