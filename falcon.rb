@@ -140,6 +140,11 @@ class File_chooser
   def cookie_destroyer
     # totally unnecessary, 'del Cookie.txt' is way handier!
   end
+  
+  # for minitest only
+  def create_method(name, &block)
+    self.class.send(:define_method, name, &block)
+  end
  
 end
 
@@ -369,7 +374,8 @@ class Show_whatever
   end
   
   def iterate_applicable_result( &block )
-    self.get_applicable_result.each do |regex_name, hash|
+    applicable_result = self.get_applicable_result || []
+    applicable_result.each do |regex_name, hash|
       block.call regex_name, hash
     end
   end
@@ -697,76 +703,95 @@ class Show_jl < Show_whatever
   JL = ABC + ABC.map {|letter| letter.downcase } + NUM + SYMBOL
   
   def refine_case( name, hash )
-    case name
-      when 'jl'
-        jl_hash = {}
-        hash.each do |file_name, value_arr|
-          jl_arr = []
-          value_arr.each do |arr|
-            jl_arr << arr[1].chomp unless arr[1].chomp == '#'
+    if name && hash
+      case name
+        when 'jl'
+          jl_hash = {}
+          hash.each do |file_name, value_arr|
+            jl_arr = []
+            value_arr.each do |arr|
+              jl_arr << arr[1].chomp unless arr[1].chomp == '#'
+            end
+            jl_hash = jl_hash.merge( { file_name => jl_arr.uniq.sort } )
           end
-          jl_hash = jl_hash.merge( { file_name => jl_arr.uniq.sort } )
-        end
-        return_hash = jl_hash
-      when 'target'
-        label_arr = []
-        field_arr = []
-        hash.each do |file_name, value_arr|
-          value_arr.each do |arr|
-            label_arr << arr[0].chomp unless arr[0] == nil
-            field_arr << arr[2].chomp unless arr[2] == nil
+          return_hash = jl_hash
+        when 'target'
+          label_arr = []
+          field_arr = []
+          hash.each do |file_name, value_arr|
+            value_arr.each do |arr|
+              label_arr << arr[0].chomp unless arr[0] == nil
+              field_arr << arr[2].chomp unless arr[2] == nil
+            end
           end
-        end
-        target_hash = { 
-                        'label' => ( label_arr.sort ),  #not uniq because later check for not uniqe targets
-                        'field' => ( field_arr.sort )
-                      }  
-        return_hash = target_hash
+          target_hash = { 
+                          'label' => ( label_arr.sort ),  #not uniq because later check for not uniqe targets
+                          'field' => ( field_arr.sort )
+                        }  
+          return_hash = target_hash
+      end
+      return_hash
+    else
+      []
     end
-    return_hash
   end
   
   def run_checks( refine_hash )
-    hash_to_check = refine_hash    
-    specific_warnings_arr = []
-    #run checks
-    specific_warnings_arr << check_target_missing( hash_to_check['target'], hash_to_check['output'] )
-    specific_warnings_arr << check_target_not_unique( hash_to_check['target'] )
-    #result
-    specific_warnings_arr
+    if refine_hash
+      hash_to_check = refine_hash    
+      specific_warnings_arr = []
+      #run checks
+      specific_warnings_arr << check_target_missing( hash_to_check['target'], hash_to_check['output'] )
+      specific_warnings_arr << check_target_not_unique( hash_to_check['target'] )
+      #result
+      specific_warnings_arr
+    else
+      []
+    end
   end
   
   def output_specific( all_elements ) 
+    if all_elements
       free_jl = JL - all_elements
       puts ''
       puts 'FREE jump labels: ' 
       puts free_jl.join('  ')
-      puts 'Total free: ' + free_jl.count.to_s 
+      puts 'Total free: ' + free_jl.count.to_s  
+    end
   end
   
   def check_target_missing( hash, output_hash )
-    sorted_per_type_targets_hash = hash
-    #check
-    target_missing = []
-    output_hash.each do |file, arr|
-      arr.each do |jl|
-        #check if matching target exists
-        conjectured_target_label = '#-' + jl
-        unless  sorted_per_type_targets_hash['label'].uniq.find { |e| /#{conjectured_target_label}/ =~ e } ||  #type #-A
-                sorted_per_type_targets_hash['field'].uniq.find { |e| /#{jl}/ =~ e }                         #type field            
-          target_missing << jl
+    if hash && output_hash
+      targets_type_label = hash['label'] || []
+      targets_type_label = targets_type_label.uniq
+      targets_type_field = hash['field'] || []
+      targets_type_field = targets_type_field.uniq
+      #check
+      target_missing = []
+      output_hash.each do |file, arr|
+        arr.each do |jl|
+          #check if matching target exists
+          conjectured_target_label = '#-' + jl
+          unless  targets_type_label.find { |e| /#{conjectured_target_label}/ =~ e } ||  #type #-A
+                  targets_type_field.find { |e| /#{jl}/ =~ e }                           #type field            
+            target_missing << jl
+          end
         end
       end
-    end
-    target_missing = target_missing.uniq.sort.reject { |element| element if element =~ /^ *$/}  
-    #word out warnings
-    if target_missing.any?
-      missing_warnings = []
-      target_missing.each do |target|
-        missing_warnings << ( 'Warning! No target exists for +' + target + '.' )
+      target_missing = target_missing.uniq.sort.reject { |element| element if element =~ /^ *$/}  
+      #word out warnings
+      if target_missing.any?
+        missing_warnings = []
+        target_missing.each do |target|
+          missing_warnings << ( 'Warning! No target exists for +' + target + '.' )
+        end
+        missing_warnings.uniq.sort
+      else
+        []
       end
+    else
+      []
     end
-    missing_warnings.uniq.sort
   end #end method
   
   def check_target_not_unique( sorted_per_type_targets_hash )
@@ -821,7 +846,8 @@ class Show_tr < Show_whatever
   def check_which_line
     tracer_warnings = []
     tracer_regex = self.search_instructions_repository.tr.tr_regex
-    self.refine['output'].keys.each do |file_name| 
+    output = self.refine['output'] || {}
+    output.keys.each do |file_name| 
         self.search_arr.each do |object|  
           if object.path_and_file == file_name
             object.contents.each_with_index do |line, index|
